@@ -80,4 +80,12 @@ The distributable `.exe` will be located in the `release/` directory.
 Time Master is built on the belief that **friction is information**. By forcing a scientific audit of every hour, the app transforms "busy-work" into a sequence of verified technical victories.
 
 ---
+
+## ☕ Support
+
+If Time Master has sharpened your focus, consider supporting the protocol:
+
+[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=btawaifi&button_colour=8B5CF6&font_colour=ffffff&font_family=Inter&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/btawaifi)
+
+---
 *Created by BTawaifi*
