@@ -1,4 +1,4 @@
-# 🧪 Time Master: The Enforcer Node
+# Time Master: The Enforcer Node
 
 [![Fuel the Protocol](https://img.buymeacoffee.com/button-api/?text=Fuel%20the%20Protocol&emoji=⚡&slug=btawaifi&button_colour=8B5CF6&font_colour=ffffff&font_family=Inter&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/btawaifi)
 
