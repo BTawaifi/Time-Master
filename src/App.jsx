@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Clock, CheckCircle, AlertCircle, Save, X, Terminal, Activity, Zap, HelpCircle, ArrowRight, Play, Pause, RotateCcw, Plus, Minus, Target, Palette, Layout, Minimize2, Maximize2, Square, Bell, Volume2, Copy, Archive, Calendar, ClipboardCheck, Trash2, Edit3, Settings2, Box, Type, Database, PenTool, RefreshCcw, EyeOff, FastForward, Radio, Shuffle, Music, Sliders } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, Save, X, Terminal, Activity, Zap, HelpCircle, ArrowRight, Play, Pause, RotateCcw, Plus, Minus, Target, Palette, Layout, Minimize2, Maximize2, Square, Bell, Volume2, Copy, Archive, Calendar, ClipboardCheck, Trash2, Edit3, Settings2, Box, Type, Database, PenTool, RefreshCcw, EyeOff, FastForward, Radio, Shuffle, Music, Sliders, RefreshCw, Compass, Waves, Settings, BatteryCharging, ChevronDown, ChevronUp, SkipForward, Coffee, Target as TargetIcon, History, Lightbulb, FileJson, FolderOpen, Star, BrainCircuit, Flag, Tally5 } from 'lucide-react';
 
 const THEMES = [
   { id: 'enforcer', name: 'Enforcer', bg: '#121212', accent: '#8B5CF6', contrast: '#ffffff', card: 'rgba(255, 255, 255, 0.05)', input: 'rgba(0, 0, 0, 0.2)', inputText: '#ffffff', inputPlaceholder: 'rgba(255, 255, 255, 0.4)', dataText: '#ffffff', text: '#ffffff' },
@@ -20,14 +20,16 @@ const THEMES = [
 const DEFAULT_SETTINGS = {
   themeId: 'enforcer',
   autoMinimize: true,
+  pomodoroOnly: false,
   reminderInterval: 60,
   reminderMode: 'stochastic',
   timerDuration: 25 * 60,
-  customTheme: { ...THEMES[THEMES.length - 1] },
+  restDuration: 5 * 60,
+  logFilePath: '',
+  customTheme: { id: 'custom', name: 'Custom', bg: '#121212', accent: '#8B5CF6', contrast: '#ffffff', card: 'rgba(255, 255, 255, 0.05)', input: 'rgba(0, 0, 0, 0.2)', inputText: '#ffffff', inputPlaceholder: 'rgba(255, 255, 255, 0.4)', dataText: '#ffffff', text: '#ffffff' },
   customTone: { freq: 440, type: 'sine', volume: 0.15, duration: 0.4 }
 };
 
-// --- Utilities Node ---
 const rgbaToHexAndAlpha = (rgba) => {
   if (!rgba || !rgba.startsWith('rgba')) return { hex: '#ffffff', alpha: 0.05 };
   const clean = rgba.replace('rgba(', '').replace(')', '').split(',').map(s => s.trim());
@@ -50,30 +52,31 @@ function App() {
     try {
       const stored = localStorage.getItem('time_master_settings');
       if (!stored) return DEFAULT_SETTINGS;
-      const p = JSON.parse(stored);
-      return {
-        ...DEFAULT_SETTINGS, ...p,
-        customTheme: { ...DEFAULT_SETTINGS.customTheme, ...(p.customTheme || {}) },
-        customTone: { ...DEFAULT_SETTINGS.customTone, ...(p.customTone || {}) }
-      };
+      const parsed = JSON.parse(stored);
+      return { ...DEFAULT_SETTINGS, ...parsed, customTheme: { ...DEFAULT_SETTINGS.customTheme, ...(parsed.customTheme || {}) }, customTone: { ...DEFAULT_SETTINGS.customTone, ...(parsed.customTone || {}) } };
     } catch (e) { return DEFAULT_SETTINGS; }
   });
 
   const [timeLeft, setTimeLeft] = useState(settings.timerDuration);
   const [isActive, setIsActive] = useState(false);
   const [isEnforced, setIsEnforced] = useState(false);
+  const [pomodoroState, setPomodoroState] = useState('focus'); // 'focus' or 'rest'
+  const [focusCount, setFocusCount] = useState(0);
   const [showArchives, setShowArchives] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showToneModal, setShowToneModal] = useState(false);
   const [archiveData, setArchiveData] = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isMaximized, setIsMaximized] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [expandedIds, setExpandedIds] = useState([]);
   const [editFields, setEditFields] = useState({});
-  const [formData, setFormData] = useState({ activity: '', output: '', utility: 5, friction: '', uncertainty: 'decreased', hypothesisValid: true, hypothesisNote: '', nextStep: '', pivot: false, quickWin: '', bet: '' });
+  const [formData, setFormData] = useState({ activity: '', output: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', bet: '' });
 
   const timerRef = useRef(null);
   const reminderRef = useRef(null);
+  const dateInputRef = useRef(null);
 
   useEffect(() => { localStorage.setItem('time_master_settings', JSON.stringify(settings)); }, [settings]);
 
@@ -102,6 +105,15 @@ function App() {
   useEffect(() => {
     if (isActive && settings.autoMinimize && window.electron && !isEnforced) window.electron.minimizeApp();
   }, [isActive, isEnforced]);
+
+  useEffect(() => {
+    if (!isActive && !isEnforced && settings.reminderInterval > 0) {
+      reminderRef.current = setInterval(() => playReminder(), settings.reminderInterval * 1000);
+    } else {
+      clearInterval(reminderRef.current);
+    }
+    return () => clearInterval(reminderRef.current);
+  }, [isActive, isEnforced, settings.reminderInterval, settings.reminderMode]);
 
   const playReminder = (forced = null) => {
     try {
@@ -143,55 +155,127 @@ function App() {
     } catch (e) {}
   };
 
+  const playPeep = (freq = 660, dur = 0.1) => {
+    try {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.02);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + dur);
+    } catch (e) {}
+  };
+
   useEffect(() => {
     if (isActive && timeLeft > 0) {
       timerRef.current = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (timeLeft === 0 && isActive) {
-      setIsActive(false); setIsEnforced(true); playAlarm();
-      if (window.electron) window.electron.triggerEnforce();
+      setIsActive(false); 
+      playAlarm();
+      if (settings.pomodoroOnly) {
+          if (pomodoroState === 'focus') {
+              setFocusCount(prev => prev + 1);
+              setPomodoroState('rest');
+              setTimeLeft(settings.restDuration);
+              playPeep(440, 0.5);
+              setTimeout(() => setIsActive(true), 100);
+          } else {
+              setPomodoroState('focus');
+              setTimeLeft(settings.timerDuration);
+              playPeep(880, 0.5);
+              setTimeout(() => setIsActive(true), 100);
+          }
+      } else {
+          setIsEnforced(true);
+          if (window.electron) window.electron.triggerEnforce();
+      }
     } else {
       clearInterval(timerRef.current);
     }
     return () => clearInterval(timerRef.current);
-  }, [isActive, timeLeft]);
+  }, [isActive, timeLeft, settings.pomodoroOnly, pomodoroState]);
 
   const handleSettingChange = (key, val) => setSettings(prev => ({ ...prev, [key]: val }));
-  const adjustTimer = (amt) => { const nd = Math.max(60, settings.timerDuration + amt); handleSettingChange('timerDuration', nd); if (!isActive) setTimeLeft(nd); };
-  const resetTimer = () => { setIsActive(false); setTimeLeft(settings.timerDuration); };
-  const forceFinish = () => { setIsActive(false); setIsEnforced(true); if (window.electron) window.electron.triggerEnforce(); };
+  const adjustTimer = (amt) => { 
+      const key = pomodoroState === 'focus' ? 'timerDuration' : 'restDuration';
+      const nd = Math.max(60, settings[key] + amt); 
+      setSettings(prev => ({...prev, [key]: nd})); 
+      if (!isActive) setTimeLeft(nd); 
+  };
+  const resetTimer = () => { playPeep(440); setIsActive(false); setTimeLeft(pomodoroState === 'focus' ? settings.timerDuration : settings.restDuration); };
+  const forceFinish = () => { 
+      playPeep(880); 
+      setIsActive(false); 
+      if (settings.pomodoroOnly) {
+          if (pomodoroState === 'focus') {
+              setFocusCount(prev => prev + 1);
+              setPomodoroState('rest');
+              setTimeLeft(settings.restDuration);
+          } else {
+              setPomodoroState('focus');
+              setTimeLeft(settings.timerDuration);
+          }
+          setTimeout(() => setIsActive(true), 100);
+      } else {
+          setIsEnforced(true); 
+          if (window.electron) window.electron.triggerEnforce(); 
+      }
+  };
 
-  const handleSubmit = () => {
+  const handleAuthorization = (shouldPivot) => {
     if (!formData.activity || !formData.output) return;
     if (window.electron) {
-        window.electron.saveLog(formData);
+        window.electron.saveLog({ ...formData, pivot: shouldPivot }, settings.logFilePath);
         setIsEnforced(false);
-        const reset = { activity: '', output: '', utility: 5, friction: '', uncertainty: 'decreased', hypothesisValid: true, hypothesisNote: '', nextStep: '', pivot: false, quickWin: '' };
-        if (!formData.pivot) {
+        const reset = { activity: '', output: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '' };
+        if (!shouldPivot) {
             setFormData(prev => ({ ...prev, ...reset }));
             setTimeLeft(settings.timerDuration);
             setIsActive(true);
+            playPeep(880, 0.2);
         } else {
             setFormData({ ...reset, bet: '' });
             setTimeLeft(settings.timerDuration);
             setIsActive(false); 
+            playPeep(440, 0.2);
         }
     }
   };
 
+  const handleSkip = () => {
+      playPeep(440, 0.3);
+      setIsEnforced(false);
+      const reset = { activity: '', output: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '' };
+      setFormData(prev => ({ ...prev, ...reset, bet: '' }));
+      setTimeLeft(settings.timerDuration);
+      setIsActive(false);
+  };
+
+  const toggleExpand = (id) => setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+
   const Header = () => (
     <div className="fixed top-0 left-0 w-full h-10 flex items-center justify-between px-4 z-[100] drag">
         <div className="flex items-center gap-4 no-drag">
-            <button onClick={async () => { const logs = await window.electron?.getLogs(); setArchiveData(logs || {}); setShowArchives(true); }} className="p-2 hover:bg-white/10 rounded-lg opacity-40 hover:opacity-100 flex items-center gap-2">
-                <Archive size={14} /> <span className="text-[10px] font-bold uppercase tracking-widest">Archives</span>
+            <button onClick={async () => { const logs = await window.electron?.getLogs(settings.logFilePath); setArchiveData(logs || {}); setShowArchives(true); }} className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-40 hover:opacity-100 flex items-center gap-2 text-main">
+                <History size={14} /> <span className="text-[10px] font-bold uppercase tracking-widest">History</span>
             </button>
-            <div className="flex items-center gap-2 opacity-40 text-[10px] font-bold uppercase tracking-widest">
+            <button onClick={() => setShowSettingsModal(true)} className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-40 hover:opacity-100 flex items-center gap-2 text-main">
+                <Settings size={14} /> <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
+            </button>
+            <div className="flex items-center gap-2 opacity-40 text-[10px] font-bold uppercase tracking-widest text-main">
                 <Clock size={12} className="accent-text" /> Time Master
             </div>
         </div>
         <div className="flex items-center gap-1 no-drag">
-            <button onClick={() => window.electron?.minimizeApp()} className="p-2 hover:bg-white/10 rounded-lg opacity-40 hover:opacity-100"><Minus size={14} /></button>
-            <button onClick={() => window.electron?.maximizeApp()} className="p-2 hover:bg-white/10 rounded-lg opacity-40 hover:opacity-100">{isMaximized ? <Copy size={14} className="rotate-180" /> : <Square size={12} />}</button>
-            <button onClick={() => window.electron?.closeApp()} className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-lg opacity-40 hover:opacity-100"><X size={14} /></button>
+            <button onClick={() => window.electron?.minimizeApp()} className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-40 hover:opacity-100 text-main"><Minus size={14} /></button>
+            <button onClick={() => window.electron?.maximizeApp()} className="p-2 hover:bg-white/10 rounded-lg transition-colors opacity-40 hover:opacity-100 text-main">{isMaximized ? <Copy size={14} className="rotate-180" /> : <Square size={12} />}</button>
+            <button onClick={() => window.electron?.closeApp()} className="p-2 hover:bg-red-500/20 hover:text-red-500 rounded-lg transition-colors opacity-40 hover:opacity-100 text-main"><X size={14} /></button>
         </div>
     </div>
   );
@@ -200,29 +284,29 @@ function App() {
     const cardVis = rgbaToHexAndAlpha(settings.customTheme.card);
     const inputVis = rgbaToHexAndAlpha(settings.customTheme.input);
     const placeholderVis = rgbaToHexAndAlpha(settings.customTheme.inputPlaceholder);
-    const update = (u) => setSettings(prev => ({ ...prev, customTheme: { ...prev.customTheme, ...u } }));
+    const upd = (u) => setSettings(prev => ({ ...prev, customTheme: { ...prev.customTheme, ...u } }));
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-[var(--bg-color)]/95 backdrop-blur-xl">
             <div className="glass-card max-w-2xl w-full p-8 space-y-8 border-2 accent-border overflow-y-auto max-h-[90vh]">
-                <div className="flex items-center justify-between"><h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><Settings2 size={24} className="accent-text" /> Theme Architect</h2>
-                    <div className="flex items-center gap-2"><button onClick={() => update(DEFAULT_SETTINGS.customTheme)} className="p-2 hover:bg-white/10 rounded-full text-white/40"><RefreshCcw size={18}/></button><button onClick={() => setShowCustomModal(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={20}/></button></div>
+                <div className="flex items-center justify-between"><h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2 text-main"><Palette size={24} className="accent-text" /> Design Your Theme</h2>
+                    <div className="flex items-center gap-2"><button onClick={() => upd(DEFAULT_SETTINGS.customTheme)} className="p-2 hover:bg-white/10 rounded-full opacity-40 text-main"><RefreshCcw size={18}/></button><button onClick={() => setShowCustomModal(false)} className="p-2 hover:bg-white/10 rounded-full text-main"><X size={20}/></button></div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
-                    <div className="space-y-6">
-                        <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">Surfaces</h3>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Main BG</label><div className="flex items-center gap-3"><input type="color" value={settings.customTheme.bg} onChange={(e) => update({bg: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div></div>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Cards Alpha</label><input type="range" min="0" max="1" step="0.01" value={cardVis.alpha} onChange={(e) => update({card: hexToRgba(cardVis.hex, e.target.value)})} className="w-full accent-white" /></div>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Inputs Alpha</label><input type="range" min="0" max="1" step="0.01" value={inputVis.alpha} onChange={(e) => update({input: hexToRgba(inputVis.hex, e.target.value)})} className="w-full accent-white" /></div>
+                    <div className="space-y-6 text-main">
+                        <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">Colors & Surfaces</h3>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Background</label><div className="flex items-center gap-3"><input type="color" value={settings.customTheme.bg} onChange={(e) => upd({bg: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div></div>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Card Transparency</label><input type="range" min="0" max="1" step="0.01" value={cardVis.alpha} onChange={(e) => upd({card: hexToRgba(cardVis.hex, e.target.value)})} className="w-full accent-accent-color" /></div>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Input Transparency</label><input type="range" min="0" max="1" step="0.01" value={inputVis.alpha} onChange={(e) => upd({input: hexToRgba(inputVis.hex, e.target.value)})} className="w-full accent-accent-color" /></div>
                     </div>
-                    <div className="space-y-6">
-                        <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">Typography</h3>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Main Text</label><input type="color" value={settings.customTheme.text} onChange={(e) => update({text: e.target.value, dataText: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Input Text</label><input type="color" value={settings.customTheme.inputText} onChange={(e) => update({inputText: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Placeholder</label><input type="color" value={placeholderVis.hex} onChange={(e) => update({inputPlaceholder: hexToRgba(e.target.value, placeholderVis.alpha)})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
-                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Accent</label><input type="color" value={settings.customTheme.accent} onChange={(e) => update({accent: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
+                    <div className="space-y-6 text-main">
+                        <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">Text & Accents</h3>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Main Text Color</label><input type="color" value={settings.customTheme.text} onChange={(e) => upd({text: e.target.value, dataText: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Input Text Color</label><input type="color" value={settings.customTheme.inputText} onChange={(e) => upd({inputText: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Placeholder Color</label><input type="color" value={placeholderVis.hex} onChange={(e) => upd({inputPlaceholder: hexToRgba(e.target.value, placeholderVis.alpha)})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
+                        <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Highlight Color</label><input type="color" value={settings.customTheme.accent} onChange={(e) => upd({accent: e.target.value})} className="w-10 h-10 bg-transparent cursor-pointer" /></div>
                     </div>
                 </div>
-                <button onClick={() => setShowCustomModal(false)} className="w-full py-4 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest">Finalize</button>
+                <button onClick={() => setShowCustomModal(false)} className="w-full py-4 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest">Save Design</button>
             </div>
         </div>
     );
@@ -231,44 +315,153 @@ function App() {
   const CustomToneModal = () => {
     const upd = (u) => setSettings(prev => ({ ...prev, customTone: { ...prev.customTone, ...u } }));
     return (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-xl">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-6 bg-[var(--bg-color)]/95 backdrop-blur-xl">
             <div className="glass-card max-w-md w-full p-8 space-y-8 border-2 accent-border">
-                <div className="flex items-center justify-between"><h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2"><Music size={24} className="accent-text" /> Tone Architect</h2><button onClick={() => setShowToneModal(false)} className="p-2 hover:bg-white/10 rounded-full"><X size={20}/></button></div>
-                <div className="space-y-6">
-                    <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Freq ({settings.customTone.freq}Hz)</label><input type="range" min="100" max="2000" value={settings.customTone.freq} onChange={(e) => upd({freq: parseInt(e.target.value)})} className="w-full accent-white" /></div>
-                    <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Waveform</label><div className="grid grid-cols-2 gap-2">{['sine', 'triangle', 'square', 'sawtooth'].map(t => (<button key={t} onClick={() => upd({type: t})} className={`py-2 rounded-lg text-[10px] font-bold uppercase border transition-all ${settings.customTone.type === t ? 'accent-bg accent-contrast-text' : 'border-white/10'}`}>{t}</button>))}</div></div>
+                <div className="flex items-center justify-between"><h2 className="text-xl font-black uppercase tracking-tighter flex items-center gap-2 text-main"><Music size={24} className="accent-text" /> Alert Sound</h2><button onClick={() => setShowToneModal(false)} className="p-2 hover:bg-white/10 rounded-full text-main"><X size={20}/></button></div>
+                <div className="space-y-6 text-main">
+                    <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Pitch ({settings.customTone.freq}Hz)</label><input type="range" min="100" max="2000" value={settings.customTone.freq} onChange={(e) => upd({freq: parseInt(e.target.value)})} className="w-full accent-accent-color" /></div>
+                    <div className="space-y-2"><label className="text-[10px] font-bold uppercase opacity-40">Sound Style</label><div className="grid grid-cols-2 gap-2">{['sine', 'triangle', 'square', 'sawtooth'].map(t => (<button key={t} onClick={() => upd({type: t})} className={`py-2 rounded-lg text-[10px] font-bold uppercase border transition-all ${settings.customTone.type === t ? 'accent-bg accent-contrast-text border-transparent' : 'border-white/10 text-main'}`}>{t}</button>))}</div></div>
                 </div>
-                <div className="flex gap-3"><button onClick={() => playReminder(settings.customTone)} className="flex-1 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-bold text-xs flex items-center justify-center gap-2"><Volume2 size={16} /> Test</button><button onClick={() => setShowToneModal(false)} className="flex-1 py-4 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest">Calibrate</button></div>
+                <div className="flex gap-3"><button onClick={() => playReminder(settings.customTone)} className="flex-1 py-4 bg-white/5 border border-white/10 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 text-main"><Volume2 size={16} /> Test Sound</button><button onClick={() => setShowToneModal(false)} className="flex-1 py-4 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest">Apply Sound</button></div>
             </div>
         </div>
     );
   };
 
+  const SettingsModal = () => (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[var(--bg-color)]/95 backdrop-blur-xl">
+        <div className="glass-card max-w-3xl w-full p-8 space-y-8 border-2 accent-border overflow-y-auto max-h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between"><h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3 text-main"><Settings size={28} className="accent-text" /> Settings</h2><button onClick={() => setShowSettingsModal(false)} className="p-2 hover:bg-white/10 rounded-full transition-all text-main"><X size={24}/></button></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6 text-main">
+                    <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">Storage Node</h3>
+                    <div className="space-y-4">
+                        <button onClick={async () => { const path = await window.electron.selectLogFile(); if (path) setSettings(prev => ({...prev, logFilePath: path})); }} className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all flex items-center justify-between group">
+                            <div className="flex items-center gap-3"><FileJson size={16} className="accent-text" /><div className="flex flex-col items-start text-main"><span className="text-xs font-bold opacity-60 uppercase">Select Log File</span><span className="text-[8px] font-mono opacity-30 truncate max-w-[150px]">{settings.logFilePath || 'Default System Path'}</span></div></div>
+                            <ArrowRight size={14} className="opacity-20 group-hover:opacity-100 transition-all accent-text" />
+                        </button>
+                        <button onClick={() => window.electron?.openLogsFolder(settings.logFilePath)} className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all flex items-center justify-between group text-main">
+                            <div className="flex items-center gap-3"><FolderOpen size={16} className="accent-text" /><span className="text-xs font-bold opacity-60 uppercase">Open Folder</span></div>
+                            <X size={14} className="rotate-45 opacity-20 group-hover:opacity-100 transition-all accent-text" />
+                        </button>
+                    </div>
+
+                    <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2 pt-4 text-main">Break Times</h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between text-main"><span className="text-xs font-bold opacity-60 uppercase tracking-tighter">Rest Duration</span><div className="flex items-center gap-3"><button onClick={() => setSettings(prev => ({ ...prev, restDuration: Math.max(60, prev.restDuration - 60) }))} className="p-1 hover:bg-white/5 rounded border border-white/10"><Minus size={12}/></button><span className="font-mono text-sm">{Math.floor(settings.restDuration / 60)}m</span><button onClick={() => setSettings(prev => ({ ...prev, restDuration: prev.restDuration + 60 }))} className="p-1 hover:bg-white/5 rounded border border-white/10"><Plus size={12}/></button></div></div>
+                    </div>
+                    <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2 pt-4 text-main">Reminders</h3>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between text-main"><span className="text-xs font-bold opacity-60 uppercase tracking-tighter">Alert Every</span><div className="flex items-center gap-3"><button onClick={() => setSettings(prev => ({ ...prev, reminderInterval: Math.max(0, prev.reminderInterval - 10) }))} className="p-1 hover:bg-white/5 rounded border border-white/10"><Minus size={12}/></button><span className="font-mono text-sm">{settings.reminderInterval}s</span><button onClick={() => setSettings(prev => ({ ...prev, reminderInterval: prev.reminderInterval + 10 }))} className="p-1 hover:bg-white/5 rounded border border-white/10"><Plus size={12}/></button></div></div>
+                        <div className="flex items-center justify-between text-main"><span className="text-xs font-bold opacity-60 uppercase tracking-tighter">Sound Type</span><div className="flex bg-white/5 rounded-lg p-1 border border-white/10"><button onClick={() => setSettings(prev => ({...prev, reminderMode: 'stochastic'}))} className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${settings.reminderMode === 'stochastic' ? 'accent-bg accent-contrast-text' : 'opacity-40'}`}>RANDOM</button><button onClick={() => { setSettings(prev => ({...prev, reminderMode: 'presets'})); setShowToneModal(true); }} className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold transition-all ${settings.reminderMode === 'presets' ? 'accent-bg accent-contrast-text' : 'opacity-40'}`}>CUSTOM <Sliders size={10}/></button></div></div>
+                    </div>
+                </div>
+                <div className="space-y-6 text-main">
+                    <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">Visual Style</h3>
+                    <div className="grid grid-cols-2 gap-2">{THEMES.map(t => (<button key={t.id} onClick={() => { setSettings(prev => ({...prev, themeId: t.id})); if (t.id === 'custom') setShowCustomModal(true); }} className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all ${settings.themeId === t.id ? 'accent-border accent-bg accent-contrast-text' : 'border-white/5 hover:bg-white/5 opacity-40'}`}>{t.name} {t.id === 'custom' && <Settings2 size={10} className="inline ml-1" />}</button>))}</div>
+                </div>
+            </div>
+            <button onClick={() => setShowSettingsModal(false)} className="w-full py-5 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest shadow-[0_0_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all">Apply All Changes</button>
+        </div>
+    </div>
+  );
+
   if (showArchives) {
     const logs = archiveData[selectedDate] || [];
     return (
-        <div className="min-h-screen p-8 overflow-y-auto pt-14">
+        <div className="min-h-screen p-8 overflow-y-auto pt-14 text-main">
             <Header />
+            {showSettingsModal && <SettingsModal />}
+            {showCustomModal && <CustomThemeModal />}
+            {showToneModal && <CustomToneModal />}
             <div className="max-w-4xl mx-auto space-y-8">
-                <header className="flex items-center justify-between"><button onClick={() => setShowArchives(false)} className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 accent-text"><ArrowRight className="rotate-180" size={16} /> BACK</button><div className="flex items-center gap-4"><div className="flex items-center gap-2 bg-white/5 px-4 py-2 rounded-xl border border-white/10"><Calendar size={16} className="accent-text" /><input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-mono focus:outline-none"/></div><button onClick={() => navigator.clipboard.writeText(JSON.stringify(logs, null, 2))} className="px-4 py-2 bg-white text-black text-xs font-black rounded-xl hover:bg-[#8B5CF6] hover:text-white transition-all flex items-center gap-2"><ClipboardCheck size={16} /> COPY JSON</button></div></header>
+                <header className="flex items-center justify-between"><button onClick={() => setShowArchives(false)} className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all accent-text"><ArrowRight className="rotate-180" size={16} /> BACK</button><div className="flex items-center gap-4"><label onClick={() => dateInputRef.current?.showPicker()} className="flex items-center bg-white/5 px-4 py-2 rounded-xl border border-white/10 hover:border-accent-color/50 hover:bg-white/10 transition-all cursor-pointer group"><input ref={dateInputRef} type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent text-sm font-mono focus:outline-none data-text cursor-pointer [color-scheme:dark] w-[110px]"/><Calendar size={16} className="accent-text group-hover:scale-110 transition-transform" /></label><button onClick={() => navigator.clipboard.writeText(JSON.stringify(logs, null, 2))} className="px-4 py-2 accent-bg accent-contrast-text text-xs font-black rounded-xl hover:opacity-80 transition-all flex items-center gap-2"><ClipboardCheck size={16} /> COPY RECORDS</button></div></header>
                 <div className="space-y-4">
-                    <h2 className="text-xl font-bold uppercase opacity-60 flex items-center gap-2"><Terminal size={20} className="accent-text" /> Logs for {selectedDate}</h2>
-                    {logs.length === 0 ? <div className="glass-card p-20 text-center opacity-20 italic">No historical data.</div> : 
-                        logs.map((log) => (
-                            <div key={log.id} className="glass-card p-6 space-y-4 border-l-4 accent-border relative group">
-                                <div className="flex items-center justify-between mb-2"><span className="text-[10px] font-mono opacity-20">{log.timestamp}</span><div className="flex items-center gap-2">
-                                    {editingId === log.id ? (<><button onClick={async () => { const nd = {...archiveData}; nd[selectedDate] = nd[selectedDate].map(l => l.id === editingId ? editFields : l); await window.electron.updateLogs(nd); setArchiveData(nd); setEditingId(null); }} className="p-1.5 bg-green-500/20 text-green-400 rounded-md"><Save size={14} /></button><button onClick={() => setEditingId(null)} className="p-1.5 bg-white/5 text-white/40 rounded-md"><X size={14} /></button></>) : 
-                                    (<><button onClick={() => { setEditingId(log.id); setEditFields(log); }} className="p-1.5 bg-white/5 text-white/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Edit3 size={14} /></button><button onClick={async () => { if (!confirm("Delete?")) return; const nd = {...archiveData}; nd[selectedDate] = nd[selectedDate].filter(l => l.id !== log.id); if (nd[selectedDate].length === 0) delete nd[selectedDate]; await window.electron.updateLogs(nd); setArchiveData(nd); }} className="p-1.5 bg-red-500/10 text-red-400 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button></>)}
-                                </div></div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
-                                    <div className="md:col-span-2"><label className="text-[10px] font-bold accent-text uppercase opacity-40 block mb-1">Bet</label>{editingId === log.id ? <textarea value={editFields.bet} onChange={(e) => setEditFields({...editFields, bet: e.target.value})} className="input-field h-20 text-sm"/> : <p className="italic text-lg font-light data-text">"{log.bet}"</p>}</div>
-                                    <div><label className="text-[10px] font-bold accent-text uppercase opacity-40 block mb-1">Activity</label>{editingId === log.id ? <input value={editFields.activity} onChange={(e) => setEditFields({...editFields, activity: e.target.value})} className="input-field py-2"/> : <p className="text-sm data-text">{log.activity}</p>}</div>
-                                    <div><label className="text-[10px] font-bold accent-text uppercase opacity-40 block mb-1">Output</label>{editingId === log.id ? <input value={editFields.output} onChange={(e) => setEditFields({...editFields, output: e.target.value})} className="input-field py-2"/> : <p className="text-sm font-mono data-text">{log.output}</p>}</div>
-                                    <div><label className="text-[10px] font-bold accent-text uppercase opacity-40 block mb-1">Next Step</label>{editingId === log.id ? <input value={editFields.nextStep} onChange={(e) => setEditFields({...editFields, nextStep: e.target.value})} className="input-field py-2"/> : <p className="text-sm data-text underline decoration-accent-color">{log.nextStep}</p>}</div>
-                                    <div className="md:col-span-2 border-t border-white/5 pt-2"><label className="text-[10px] font-bold text-yellow-500 uppercase opacity-40 block mb-1">Friction</label>{editingId === log.id ? <input value={editFields.friction} onChange={(e) => setEditFields({...editFields, friction: e.target.value})} className="input-field py-2"/> : <p className="text-xs data-text opacity-60">{log.friction}</p>}</div>
+                    <h2 className="text-xl font-bold uppercase opacity-60 flex items-center gap-2 text-main"><History size={20} className="accent-text" /> Records for {selectedDate}</h2>
+                    {logs.length === 0 ? <div className="glass-card p-20 text-center opacity-20 italic">No recordings found for this date.</div> : 
+                        logs.map((log) => {
+                            const isExpanded = expandedIds.includes(log.id) || editingId === log.id;
+                            const won = log.hypothesisValid;
+                            return (
+                                <div key={log.id} className="glass-card overflow-hidden border-l-4 accent-border group transition-all duration-300">
+                                    <div onClick={() => !editingId && toggleExpand(log.id)} className={`p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors ${isExpanded ? 'bg-white/5 border-b border-white/5' : ''}`}>
+                                        <div className="flex items-center gap-6">
+                                            <span className="text-[10px] font-mono opacity-20 w-16 text-main">{log.timestamp}</span>
+                                            <div className="flex flex-col">
+                                                <h3 className="text-sm font-bold data-text tracking-tight truncate max-w-md">{log.activity}</h3>
+                                                {!isExpanded && (
+                                                    <div className="flex items-center gap-3 mt-1.5">
+                                                        <span className={`px-1.5 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest ${won ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{won ? 'GOAL MET' : 'MISSED'}</span>
+                                                        <span className="text-[8px] font-black opacity-30 uppercase tracking-widest flex items-center gap-1"><Star size={8}/> FOCUS: {log.focusDepth}/10</span>
+                                                        <span className="text-[8px] font-black opacity-30 uppercase tracking-widest flex items-center gap-1"><Zap size={8}/> VALUE: {log.utility}/10</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex items-center gap-2 no-drag text-main">
+                                                {editingId === log.id ? (
+                                                    <><button onClick={async (e) => { e.stopPropagation(); const nd = {...archiveData}; nd[selectedDate] = nd[selectedDate].map(l => l.id === editingId ? editFields : l); await window.electron.updateLogs(nd, settings.logFilePath); setArchiveData(nd); setEditingId(null); }} className="p-1.5 bg-green-500/20 text-green-400 rounded-md"><Save size={14} /></button><button onClick={(e) => { e.stopPropagation(); setEditingId(null); }} className="p-1.5 bg-white/5 text-white/40 rounded-md"><X size={14} /></button></>
+                                                ) : (
+                                                    <><button onClick={(e) => { e.stopPropagation(); setEditingId(log.id); setEditFields(log); }} className="p-1.5 bg-white/5 text-white/40 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Edit3 size={14} /></button><button onClick={async (e) => { e.stopPropagation(); if (!confirm("Delete Session?")) return; const nd = {...archiveData}; nd[selectedDate] = nd[selectedDate].filter(l => l.id !== log.id); if (nd[selectedDate].length === 0) delete nd[selectedDate]; await window.electron.updateLogs(nd, settings.logFilePath); setArchiveData(nd); }} className="p-1.5 bg-red-500/10 text-red-400 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button></>
+                                                )}
+                                            </div>
+                                            {isExpanded ? <ChevronUp size={16} className="opacity-20 text-main" /> : <ChevronDown size={16} className="opacity-20 text-main" />}
+                                        </div>
+                                    </div>
+                                    
+                                    {isExpanded && (
+                                        <div className="p-6 space-y-8 animate-in slide-in-from-top-4 duration-300">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-white/5 pb-8 text-main">
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30"><TargetIcon size={12}/> The Original Goal</div>
+                                                    {editingId === log.id ? <textarea value={editFields.bet} onChange={(e) => setEditFields({...editFields, bet: e.target.value})} className="input-field h-24 text-sm"/> : <p className="italic text-lg font-light data-text">"{log.bet}"</p>}
+                                                </div>
+                                                <div className="space-y-6">
+                                                    <div><label className="text-[10px] font-black uppercase tracking-widest opacity-30 block mb-2">Work Description</label>{editingId === log.id ? <input value={editFields.activity} onChange={(e) => setEditFields({...editFields, activity: e.target.value})} className="input-field py-2"/> : <p className="text-sm font-bold data-text">{log.activity}</p>}</div>
+                                                    <div><label className="text-[10px] font-black uppercase tracking-widest opacity-30 block mb-2">Finished Result</label>{editingId === log.id ? <input value={editFields.output} onChange={(e) => setEditFields({...editFields, output: e.target.value})} className="input-field py-2"/> : <p className="text-sm font-mono data-text">{log.output}</p>}</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 border-b border-white/5 pb-8 text-main">
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30"><BrainCircuit size={12}/> Analysis</div>
+                                                    <div className="flex flex-col gap-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${won ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>{won ? 'GOAL MET' : 'MISSED'}</span>
+                                                            {editingId === log.id && <button onClick={() => setEditFields({...editFields, hypothesisValid: !editFields.hypothesisValid})} className="p-1 hover:bg-white/5 rounded border border-white/10 text-[8px] font-bold">FLIP</button>}
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <span className="px-2 py-1 bg-white/5 rounded text-[10px] font-black uppercase tracking-widest">VALUE: {log.utility}/10</span>
+                                                            {editingId === log.id && <input type="number" min="1" max="10" value={editFields.utility} onChange={(e) => setEditFields({...editFields, utility: parseInt(e.target.value)})} className="w-12 bg-transparent border-b border-white/10 text-xs text-main" />}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-4 text-main">
+                                                    <div className="text-[10px] font-black uppercase tracking-widest opacity-30">Focus Score</div>
+                                                    {editingId === log.id ? <input type="range" min="1" max="10" value={editFields.focusDepth} onChange={(e) => setEditFields({...editFields, focusDepth: parseInt(e.target.value)})} className="w-full accent-accent-color" /> : <div className="text-2xl font-black accent-text">{log.focusDepth}/10</div>}
+                                                </div>
+                                                <div className="space-y-4 text-main">
+                                                    <div className="text-[10px] font-black uppercase tracking-widest opacity-30">Obstacles</div>
+                                                    {editingId === log.id ? <textarea value={editFields.friction} onChange={(e) => setEditFields({...editFields, friction: e.target.value})} className="input-field h-20 text-sm"/> : <p className="text-xs data-text opacity-70 leading-relaxed">{log.friction || 'None recorded.'}</p>}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-main">
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30"><Flag size={12}/> Next Task</div>
+                                                    {editingId === log.id ? <input value={editFields.nextStep} onChange={(e) => setEditFields({...editFields, nextStep: e.target.value})} className="input-field py-2"/> : <div className="flex items-center gap-2 data-text underline decoration-accent-color font-bold"><FastForward size={14} className="accent-text" /> {log.nextStep}</div>}
+                                                </div>
+                                                <div className="space-y-4 text-main">
+                                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30 text-yellow-500"><Zap size={12}/> Quick Win</div>
+                                                    {editingId === log.id ? <input value={editFields.quickWin} onChange={(e) => setEditFields({...editFields, quickWin: e.target.value})} className="input-field py-2 border-yellow-500/20"/> : <p className="text-xs data-text opacity-60 font-medium">{log.quickWin || 'None planned.'}</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))
+                            );
+                        })
                     }
                 </div>
             </div>
@@ -278,54 +471,72 @@ function App() {
 
   if (!isEnforced) {
      return (
-        <div className="min-h-screen flex flex-col p-8 overflow-y-auto relative pt-14">
+        <div className="min-h-screen flex flex-col p-8 overflow-y-auto relative pt-14 text-main">
             <Header />
+            {showSettingsModal && <SettingsModal />}
             {showCustomModal && <CustomThemeModal />}
             {showToneModal && <CustomToneModal />}
-            <div className="max-w-2xl mx-auto w-full space-y-8 py-4">
+            <div className="max-w-2xl mx-auto w-full py-4">
                 <div className="glass-card p-10 flex flex-col items-center space-y-8 relative overflow-hidden">
                     <div className="absolute top-0 left-0 w-full h-1 accent-bg opacity-30"></div>
+                    
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="flex items-center gap-2 px-4 py-1.5 bg-white/5 border border-white/10 rounded-full">
+                            {settings.pomodoroOnly ? (
+                                pomodoroState === 'focus' ? <><Activity size={14} className="accent-text" /> <span className="text-[10px] font-black uppercase tracking-[0.2em] accent-text">Focusing</span></> : <><Coffee size={14} className="text-amber-500" /> <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Resting</span></>
+                            ) : (
+                                <><Zap size={14} className="accent-text" /> <span className="text-[10px] font-black uppercase tracking-[0.2em] accent-text">Deep Work Focus</span></>
+                            )}
+                        </div>
+                        {settings.pomodoroOnly && (
+                            <div className="flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/5 rounded-lg animate-in zoom-in duration-300">
+                                <Tally5 size={12} className="accent-text" />
+                                <span className="text-[10px] font-bold uppercase tracking-widest opacity-40">Sessions: {focusCount}</span>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="flex items-center gap-6">
-                        <button onClick={() => adjustTimer(-300)} className="p-2 hover:bg-white/5 rounded-full opacity-40 hover:opacity-100 transition-all"><Minus size={24} /></button>
-                        <div className="text-7xl font-mono font-light tracking-tighter">{Math.floor(timeLeft / 60)}:{ (timeLeft % 60).toString().padStart(2, '0') }</div>
-                        <button onClick={() => adjustTimer(300)} className="p-2 hover:bg-white/5 rounded-full opacity-40 hover:opacity-100 transition-all"><Plus size={24} /></button>
+                        <button onClick={() => adjustTimer(-300)} className="p-2 hover:bg-white/5 rounded-full opacity-40 hover:opacity-100 transition-all text-main"><Minus size={24} /></button>
+                        <div className="text-7xl font-mono font-light tracking-tighter text-main">{Math.floor(timeLeft / 60)}:{ (timeLeft % 60).toString().padStart(2, '0') }</div>
+                        <button onClick={() => adjustTimer(300)} className="p-2 hover:bg-white/5 rounded-full opacity-40 hover:opacity-100 transition-all text-main"><Plus size={24} /></button>
                     </div>
                     <div className="flex gap-4">
-                        <button onClick={() => setIsActive(!isActive)} className={`px-10 py-4 rounded-2xl flex items-center gap-3 font-bold transition-all ${isActive ? 'bg-amber-500/20 border border-amber-500/50 text-amber-500' : 'accent-bg accent-contrast-text'}`}>{isActive ? <><Pause fill="currentColor" size={20} /> PAUSE</> : <><Play fill="currentColor" size={20} /> START FOCUS</>}</button>
-                        <button onClick={forceFinish} className="px-6 py-4 bg-white/5 border border-white/10 rounded-2xl transition-all font-bold text-xs uppercase flex items-center gap-2 flex-shrink-0"><CheckCircle size={18} className="text-green-500" /> Finish</button>
-                        <button onClick={resetTimer} className="p-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all"><RotateCcw size={20} /></button>
+                        <button onClick={() => { playPeep(880); setIsActive(!isActive); }} className={`px-10 py-4 rounded-2xl flex items-center gap-3 font-bold transition-all ${isActive ? 'bg-amber-500/20 border border-amber-500/50 text-amber-500' : 'accent-bg accent-contrast-text'}`}>{isActive ? <><Pause fill="currentColor" size={20} /> PAUSE</> : <><Play fill="currentColor" size={20} /> START {pomodoroState === 'rest' ? 'REST' : 'FOCUS'}</>}</button>
+                        <button onClick={forceFinish} className="px-6 py-4 bg-white/5 border border-white/10 rounded-2xl transition-all font-bold text-xs uppercase flex items-center gap-2 text-main"><CheckCircle size={18} className="text-green-500" /> Finish</button>
+                        <button onClick={resetTimer} className="p-4 bg-white/5 border border-white/10 rounded-2xl transition-all text-main"><RotateCcw size={20} /></button>
                     </div>
-                </div>
-                <div className="glass-card p-8 space-y-6">
-                    <div className="flex items-center gap-3"><Target className="accent-text" size={24} /><h2 className="text-xl font-bold tracking-tight uppercase">Place Your Bet</h2></div>
-                    <textarea value={formData.bet} onChange={(e) => setFormData(prev => ({...prev, bet: e.target.value}))} placeholder="I bet I can..." className="input-field h-32 resize-none"/>
-                </div>
-                <div className="glass-card p-6 space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3"><Layout className="accent-text" size={20} /><h2 className="text-sm font-bold uppercase tracking-wider opacity-60">System</h2></div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={() => window.electron?.openLogsFolder()} className="px-4 py-2 rounded-lg text-[10px] font-black border border-white/10 hover:bg-white/5 opacity-60 flex items-center gap-2"><X size={12} className="rotate-45" /> OPEN DATA</button>
-                            <button onClick={() => handleSettingChange('autoMinimize', !settings.autoMinimize)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all border ${settings.autoMinimize ? 'accent-bg accent-border accent-contrast-text' : 'border-white/10 opacity-40'}`}>{settings.autoMinimize ? 'MINIMIZE: ON' : 'MINIMIZE: OFF'}</button>
+                    
+                    <div className="w-full space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex items-center gap-3 justify-center">
+                            <TargetIcon className="accent-text" size={18} />
+                            <h2 className="text-[10px] font-black tracking-[0.2em] uppercase opacity-40 text-main">
+                                {settings.pomodoroOnly ? "I'm focusing on" : "My Goal for this session"}
+                            </h2>
                         </div>
+                        <textarea 
+                            value={formData.bet} 
+                            onChange={(e) => setFormData(prev => ({...prev, bet: e.target.value}))} 
+                            placeholder={settings.pomodoroOnly ? "I will work on..." : "I will finish..."} 
+                            className="input-field h-24 resize-none text-center bg-black/20 border-white/5 focus:border-accent-color/30 text-main"
+                        />
                     </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-3"><Bell className="accent-text" size={20} /><div className="flex flex-col"><h2 className="text-sm font-bold uppercase opacity-60 tracking-wider">Idle Reminder</h2><p className="text-[10px] opacity-30 font-mono">Ping every {settings.reminderInterval}s</p></div></div>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <button onClick={() => handleSettingChange('reminderInterval', Math.max(0, settings.reminderInterval - 10))} className="p-1 hover:bg-white/5 rounded border border-white/10"><Minus size={12} /></button>
-                                <span className="font-mono text-sm w-12 text-center">{settings.reminderInterval}s</span>
-                                <button onClick={() => handleSettingChange('reminderInterval', settings.reminderInterval + 10)} className="p-1 hover:bg-white/5 rounded border border-white/10"><Plus size={12} /></button>
-                                <button onClick={() => playReminder()} className="ml-2 p-1.5 hover:bg-white/10 rounded-full opacity-40 hover:opacity-100"><Volume2 size={14} /> </button>
-                            </div>
-                            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
-                                <button onClick={() => handleSettingChange('reminderMode', 'stochastic')} className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold transition-all ${settings.reminderMode === 'stochastic' ? 'accent-bg accent-contrast-text' : 'opacity-40'}`}><Shuffle size={10}/> RANDOM</button>
-                                <button onClick={() => { handleSettingChange('reminderMode', 'presets'); setShowToneModal(true); }} className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold transition-all ${settings.reminderMode === 'presets' ? 'accent-bg accent-contrast-text' : 'opacity-40'}`}><Music size={10}/> CUSTOM <Sliders size={10}/></button>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-4 pt-4 border-t border-white/5">
-                        <div className="flex items-center gap-3"><Palette className="accent-text" size={20} /><h2 className="text-sm font-bold uppercase tracking-wider opacity-60 tracking-widest">Interface</h2></div>
-                        <div className="flex flex-wrap gap-2">{THEMES.map(t => (<button key={t.id} onClick={() => { handleSettingChange('themeId', t.id); if (t.id === 'custom') setShowCustomModal(true); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${settings.themeId === t.id ? 'accent-border accent-bg accent-contrast-text' : 'border-white/5 hover:bg-white/5 opacity-50 hover:opacity-100'}`}>{t.name} {t.id === 'custom' && <Settings2 size={10} className="inline ml-1 opacity-50" />}</button>))}</div>
+
+                    <div className="pt-4 border-t border-white/5 w-full flex flex-col items-center gap-3">
+                        <button 
+                            onClick={() => { playPeep(660, 0.05); setFocusCount(0); setSettings(prev => ({...prev, pomodoroOnly: !prev.pomodoroOnly})); if (pomodoroState === 'rest') { setPomodoroState('focus'); setTimeLeft(settings.timerDuration); } }}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black tracking-widest transition-all border ${settings.pomodoroOnly ? 'accent-bg accent-border accent-contrast-text shadow-[0_0_20px_rgba(0,0,0,0.2)]' : 'border-white/10 opacity-30 hover:opacity-100 text-main'}`}
+                        >
+                            {settings.pomodoroOnly ? <Box size={12} fill="currentColor" /> : <Clock size={12} />}
+                            {settings.pomodoroOnly ? 'SIMPLE TIMER: ON' : 'DEEP WORK: ON'}
+                        </button>
+                        <button 
+                            onClick={() => { playPeep(660, 0.05); setSettings(prev => ({...prev, autoMinimize: !prev.autoMinimize})); }}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black tracking-widest transition-all border ${settings.autoMinimize ? 'accent-bg accent-border accent-contrast-text' : 'border-white/10 opacity-20 hover:opacity-100 text-main'}`}
+                        >
+                            <Minimize2 size={12} />
+                            {settings.autoMinimize ? 'AUTO-HIDE: ON' : 'AUTO-HIDE: OFF'}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -334,29 +545,34 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen p-8 overflow-y-auto relative pt-14">
+    <div className="min-h-screen p-8 overflow-y-auto relative pt-14 text-main">
       <Header />
+      {showSettingsModal && <SettingsModal />}
+      {showCustomModal && <CustomThemeModal />}
+      {showToneModal && <CustomToneModal />}
       <div className="max-w-4xl mx-auto space-y-8 pb-24">
-        <header className="flex items-center justify-between mb-8"><div><h1 className="text-2xl font-bold accent-text uppercase tracking-tight"><Terminal size={24} /> Reflection</h1><p className="opacity-40 text-sm mt-1">Audit results.</p></div><div className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-full flex items-center gap-1 animate-pulse font-bold"><AlertCircle size={12} /> ENFORCER ACTIVE</div></header>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass-card p-6 md:col-span-2 border-l-4 accent-border bg-white/5"><label className="block text-xs font-bold accent-text mb-2 uppercase opacity-60">Bet</label><p className="italic text-lg opacity-90 data-text">"{formData.bet || "No bet recorded."}"</p></div>
-            <div className="glass-card p-6 md:col-span-2"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider opacity-60">1. Activity</label><textarea value={formData.activity} onChange={(e) => setFormData(prev => ({...prev, activity: e.target.value}))} placeholder="Audit time..." className="input-field h-24 resize-none"/></div>
-            <div className="glass-card p-6"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider opacity-60">2. Output</label><textarea value={formData.output} onChange={(e) => setFormData(prev => ({...prev, output: e.target.value}))} placeholder="Proof..." className="input-field h-24 resize-none"/></div>
-            <div className="glass-card p-6 border-2 accent-border">
-                 <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider opacity-60">3. Result</label>
-                 <div className="flex gap-4 mb-4"><button onClick={() => setFormData({...formData, hypothesisValid: true})} className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === true ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-transparent border-white/10 opacity-30'}`}>WON</button><button onClick={() => setFormData({...formData, hypothesisValid: false})} className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === false ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-transparent border-white/10 opacity-30'}`}>LOST</button></div>
-                 <input type="text" value={formData.hypothesisNote} onChange={(e) => setFormData(prev => ({...prev, hypothesisNote: e.target.value}))} placeholder="Takeaway..." className="input-field"/>
+        <header className="flex items-center justify-between mb-8"><div><h1 className="text-2xl font-bold accent-text uppercase tracking-tight"><ClipboardCheck size={24} /> Session Review</h1><p className="opacity-40 text-sm mt-1 text-main">Check your progress.</p></div><div className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-full flex items-center gap-1 animate-pulse font-bold text-main"><AlertCircle size={12} /> STAY FOCUSED</div></header>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-main">
+            <div className="glass-card p-6 md:col-span-2 border-l-4 accent-border bg-white/5"><label className="block text-xs font-bold accent-text mb-2 uppercase opacity-60">My Goal</label><p className="italic text-lg opacity-90 data-text text-main">"{formData.bet || "No goal recorded."}"</p></div>
+            <div className="glass-card p-6 md:col-span-2 text-main"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">1. What did you work on?</label><textarea value={formData.activity} onChange={(e) => setFormData(prev => ({...prev, activity: e.target.value}))} placeholder="I worked on..." className="input-field h-24 resize-none text-main"/></div>
+            <div className="glass-card p-6 text-main"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">2. What did you complete?</label><textarea value={formData.output} onChange={(e) => setFormData(prev => ({...prev, output: e.target.value}))} placeholder="I finished..." className="input-field h-24 resize-none text-main"/></div>
+            <div className="glass-card p-6 border-2 accent-border text-main">
+                 <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">3. Did you meet your goal?</label>
+                 <div className="flex gap-4 mb-4"><button onClick={() => setFormData({...formData, hypothesisValid: true})} className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === true ? 'bg-green-500/20 border-green-500 text-green-400' : 'bg-transparent border-white/10 opacity-30 text-main'}`}>YES</button><button onClick={() => setFormData({...formData, hypothesisValid: false})} className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === false ? 'bg-red-500/20 border-red-500 text-red-400' : 'bg-transparent border-white/10 opacity-30 text-main'}`}>NO</button></div>
+                 <input type="text" value={formData.hypothesisNote} onChange={(e) => setFormData(prev => ({...prev, hypothesisNote: e.target.value}))} placeholder="Key lesson..." className="input-field text-main"/>
             </div>
-            <div className="glass-card p-6"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider opacity-60">4. Friction</label><textarea value={formData.friction} onChange={(e) => setFormData(prev => ({...prev, friction: e.target.value}))} placeholder="Identify resistance..." className="input-field h-24 resize-none"/></div>
-             <div className="glass-card p-6 flex flex-col justify-center space-y-4">
-                 <label className="block text-xs font-bold accent-text uppercase tracking-wider opacity-60">5. Protocol</label>
-                 <div className="flex items-center gap-3"><button onClick={() => setFormData({...formData, pivot: false})} className={`flex-1 py-4 rounded-xl border transition-all font-bold ${!formData.pivot ? 'bg-white/10 border-white/40' : 'border-white/5 opacity-30'}`}>CONTINUE</button><button onClick={() => setFormData({...formData, pivot: true})} className={`flex-1 py-4 rounded-xl border transition-all font-bold ${formData.pivot ? 'accent-bg accent-border accent-contrast-text' : 'border-white/5 opacity-30'}`}>PIVOT</button></div>
+            <div className="glass-card p-6 text-main"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">4. Any distractions or obstacles?</label><textarea value={formData.friction} onChange={(e) => setFormData(prev => ({...prev, friction: e.target.value}))} placeholder="I was distracted by..." className="input-field h-24 resize-none text-main"/></div>
+            <div className="glass-card p-6 flex flex-col justify-center space-y-4 text-main">
+                 <label className="block text-xs font-bold accent-text uppercase tracking-wider flex items-center gap-2"><Waves size={14} /> 5. How deep was your focus?</label>
+                 <div className="space-y-4"><div className="flex justify-between text-[10px] font-black uppercase opacity-30"><span>Distracted</span><span>Total Focus</span></div><input type="range" min="1" max="10" value={formData.focusDepth} onChange={(e) => setFormData(prev => ({...prev, focusDepth: parseInt(e.target.value)}))} className="w-full accent-accent-color" /><div className="text-center font-mono text-xl font-bold accent-text">{formData.focusDepth}/10</div></div>
             </div>
-            <div className="glass-card p-6 md:col-span-2"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider opacity-60">6. Next Step</label><div className="flex items-center gap-3"><ArrowRight size={20} className="accent-text" /><input type="text" value={formData.nextStep} onChange={(e) => setFormData(prev => ({...prev, nextStep: e.target.value}))} placeholder="Target..." className="input-field py-4 text-base"/></div></div>
-            <div className="glass-card p-6 md:col-span-2 bg-yellow-400/5 border-yellow-400/20"><label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-wider opacity-60">7. Velocity Boost</label><div className="flex items-center gap-3"><Zap size={20} className="text-yellow-400" /><input type="text" value={formData.quickWin} onChange={(e) => setFormData(prev => ({...prev, quickWin: e.target.value}))} placeholder="2-min win..." className="input-field py-4 border-yellow-400/10 focus:border-yellow-400/50"/></div></div>
+            <div className="glass-card p-6 md:col-span-2 text-main"><label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">6. What is the very next thing to do?</label><div className="flex items-center gap-3"><ArrowRight size={20} className="accent-text" /><input type="text" value={formData.nextStep} onChange={(e) => setFormData(prev => ({...prev, nextStep: e.target.value}))} placeholder="Next task..." className="input-field py-4 text-base text-main"/></div></div>
+            <div className="glass-card p-6 md:col-span-2 bg-yellow-400/5 border-yellow-400/20 text-main"><label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-wider"><Lightbulb size={14} className="inline mr-1" /> 7. A quick win for later</label><div className="flex items-center gap-3"><Zap size={20} className="text-yellow-400" /><input type="text" value={formData.quickWin} onChange={(e) => setFormData(prev => ({...prev, quickWin: e.target.value}))} placeholder="Simple 2-minute task..." className="input-field py-4 border-yellow-400/10 focus:border-yellow-400/50 text-main"/></div></div>
         </div>
-        <div className="fixed bottom-0 left-0 w-full p-6 bg-transparent backdrop-blur-3xl border-t border-white/5 flex justify-center z-50">
-            <button onClick={handleSubmit} disabled={!formData.activity || !formData.output} className={`px-12 py-4 rounded-2xl font-black tracking-widest transition-all flex items-center gap-3 ${formData.activity && formData.output ? 'accent-bg accent-contrast-text shadow-[0_0_40px_rgba(0,0,0,0.4)] scale-105 active:scale-95' : 'bg-white/5 opacity-20 cursor-not-allowed'}`}><CheckCircle size={20} /> AUTHORIZE UNLOCK</button>
+        <div className="fixed bottom-0 left-0 w-full p-6 bg-transparent backdrop-blur-3xl border-t border-white/5 flex flex-col sm:flex-row gap-4 justify-center z-50">
+            <button onClick={() => handleAuthorization(false)} disabled={!formData.activity || !formData.output} className={`px-12 py-4 rounded-2xl font-black tracking-widest transition-all flex items-center justify-center gap-3 ${formData.activity && formData.output ? 'accent-bg accent-contrast-text shadow-[0_0_40px_rgba(0,0,0,0.4)] scale-105 active:scale-95' : 'bg-white/5 opacity-20 cursor-not-allowed text-main'}`}><RefreshCw size={20} /> SAVE & RESTART</button>
+            <button onClick={() => handleAuthorization(true)} disabled={!formData.activity || !formData.output} className={`px-12 py-4 rounded-2xl font-black tracking-widest transition-all flex items-center justify-center gap-3 border border-white/10 ${formData.activity && formData.output ? 'bg-white/5 hover:bg-white/10 text-main' : 'opacity-20 cursor-not-allowed'}`}><Compass size={20} /> SAVE & STOP</button>
+            <button onClick={handleSkip} className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2 border border-red-500/20"><SkipForward size={18} /> Discard Session</button>
         </div>
       </div>
     </div>
