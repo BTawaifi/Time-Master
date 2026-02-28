@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, shell, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
@@ -16,6 +16,7 @@ function createWindow() {
     },
     frame: false,
     backgroundColor: '#121212',
+    icon: path.join(__dirname, '../build/icon.png'),
     show: false,
   });
 
@@ -52,12 +53,17 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-ipcMain.on('save-log', (event, data) => {
+const getLogPath = (customPath) => {
+    if (customPath && typeof customPath === 'string' && customPath.trim() !== '') {
+        return customPath;
+    }
+    return path.join(app.getPath('userData'), 'time_master_logs.json');
+};
+
+ipcMain.on('save-log', (event, data, customPath) => {
     const timestamp = new Date();
     const dateKey = timestamp.toISOString().split('T')[0];
-    // Use userData path for guaranteed write access across all environments
-    const logDir = app.getPath('userData');
-    const filePath = path.join(logDir, 'time_master_logs.json');
+    const filePath = getLogPath(customPath);
     
     console.log("Attempting to save log to:", filePath);
 
@@ -80,6 +86,8 @@ ipcMain.on('save-log', (event, data) => {
     });
 
     try {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(logs, null, 2));
         console.log("Log saved successfully.");
     } catch (err) { 
@@ -92,9 +100,8 @@ ipcMain.on('save-log', (event, data) => {
     }
 });
 
-ipcMain.handle('get-logs', async () => {
-    const logDir = app.getPath('userData');
-    const filePath = path.join(logDir, 'time_master_logs.json');
+ipcMain.handle('get-logs', async (event, customPath) => {
+    const filePath = getLogPath(customPath);
     console.log("Retrieving logs from:", filePath);
     try {
         if (fs.existsSync(filePath)) {
@@ -105,16 +112,31 @@ ipcMain.handle('get-logs', async () => {
     return {};
 });
 
-ipcMain.handle('update-logs', async (event, updatedLogs) => {
-    const logDir = app.getPath('userData');
-    const filePath = path.join(logDir, 'time_master_logs.json');
+ipcMain.handle('update-logs', async (event, updatedLogs, customPath) => {
+    const filePath = getLogPath(customPath);
     try {
+        const dir = path.dirname(filePath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(updatedLogs, null, 2));
         return true;
     } catch (e) {
         console.error("Failed to update logs:", e);
         return false;
     }
+});
+
+ipcMain.handle('select-log-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Select or Create Log File',
+        defaultPath: path.join(app.getPath('userData'), 'time_master_logs.json'),
+        filters: [{ name: 'JSON Files', extensions: ['json'] }],
+        properties: ['openFile', 'promptToCreate']
+    });
+    
+    if (!result.canceled && result.filePaths.length > 0) {
+        return result.filePaths[0];
+    }
+    return null;
 });
 
 ipcMain.on('minimize-app', () => {
@@ -137,13 +159,14 @@ ipcMain.on('close-app', () => {
     app.quit();
 });
 
-ipcMain.on('open-logs-folder', () => {
-    const path = app.getPath('userData');
-    console.log("IPC: Received open-logs-folder request for path:", path);
-    if (fs.existsSync(path)) {
-        shell.openExternal(`file://${path}`);
+ipcMain.on('open-logs-folder', (event, customPath) => {
+    const filePath = getLogPath(customPath);
+    const dirPath = path.dirname(filePath);
+    console.log("IPC: Received open-logs-folder request for path:", dirPath);
+    if (fs.existsSync(dirPath)) {
+        shell.openPath(dirPath);
     } else {
-        console.error("Path does not exist yet:", path);
+        console.error("Path does not exist yet:", dirPath);
     }
 });
 

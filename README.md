@@ -1,6 +1,8 @@
 # 🧪 Time Master: The Enforcer Node
 
-**Time Master** is a high-stakes productivity enforcer designed for engineers and architects who practice deep work. It replaces passive time-tracking with **Scientific Betting**—a methodology that forces you to predict outcomes and audit friction in real-time.
+[![Fuel the Protocol](https://img.buymeacoffee.com/button-api/?text=Fuel%20the%20Protocol&emoji=⚡&slug=btawaifi&button_colour=8B5CF6&font_colour=ffffff&font_family=Inter&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/btawaifi)
+
+**Maintain the Laboratory.** Time Master is a high-performance productivity enforcer designed for engineers and deep-work architects. It replaces passive tracking with a technical audit of every hour.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Avant--Garde-blueviolet)
 ![Engine](https://img.shields.io/badge/Engine-Electron%20%2B%20React-blue)
@@ -8,45 +10,55 @@
 
 ---
 
-## ⚡ Core Protocol
+## ⚡ Core Protocols
 
-### 1. The Pre-Commitment (The Bet)
-Before any focus session begins, you must **Place Your Bet**. 
-> *"I bet I can [Result] in the next [Time] if I [Action] because [Reason]."*
-This turns every hour into a controlled experiment, sharpening your predictive accuracy over time.
+### 1. Deep Work Focus (Scientific Betting)
+Every session begins with a **Pre-Commitment**. You must define your goal before the timer starts.
+*   **The Audit:** At the end of the session, the app aggressively grabs focus, forcing a **Session Review**.
+*   **Data Dossier:** Records what you worked on, what you completed, focus scores, value metrics, and obstacles.
+*   **Momentum Node:** Every review forces you to define the "Very Next Task" and a "Quick Win" for later.
 
-### 2. The Enforcer (Aggressive Focus)
-Once the timer starts, the app enters **Enforcer Mode**:
-*   **Auto-Minimize:** Dives into the taskbar immediately to clear your visual field.
-*   **Window Grab:** When time is up, the app aggressively forces itself to the front of all workspaces, locking your interface until you reflect.
-*   **Idle Pinging:** If you linger on the dashboard without starting a session, the node plays rotating synthesized "peeps" to break focus-friction.
+### 2. Simple Timer (Infinite Pomodoro)
+For classic focus cycles, toggle **Simple Timer** mode:
+*   **Automatic Cycling:** Seamlessly transitions between **Focus Period** and **Rest Period**.
+*   **Zero-Friction:** The timer auto-starts the next phase, keeping you in the flow without manual interaction.
+*   **Session Tally:** A persistent counter tracks your completed runs in the current mode.
 
-### 3. Reflection Node
-At the end of every session, you must audit the experiment:
-*   **Scientific Result:** Was the bet won or lost?
-*   **Friction Analysis:** Identify the exact resistance point.
-*   **Protocol Decision:** Choose to **Continue** (same bet, instant restart) or **Pivot** (redefine strategy).
-
----
-
-## 🎨 Visual Interface (Theme Architect)
-
-Time Master includes **12 Calibrated Themes** and a built-in **Theme Architect** for total environmental control:
-
-*   **Enforcer:** Digital Brutalism (Deep Violet/Black).
-*   **Noir:** Zero-distraction pitch black.
-*   **Nordic Light:** Soft, clinical grey for bright workspaces.
-*   **Void:** Absolute high-contrast monochrome.
-*   **Theme Architect:** Granular control over Backgrounds, Card Alpha, Input surfaces, and Data vs. System typography.
+### 3. The Enforcer (Environmental Control)
+*   **Auto-Hide:** When the timer starts, the app dives into the taskbar immediately to clear your visual field.
+*   **Aggressive Focus:** On timer end, the app forces itself to the front of all windows, locking the interface until the session is reviewed or discarded.
+*   **Audio Feedback:** High-frequency "peeps" provide physical confirmation for every start, pause, and state transition.
 
 ---
 
-## 📂 Archive Node
+## 🎨 Creative Architects
 
-All sessions are stored in a local, persistent JSON database (`%AppData%/time-master/time_master_logs.json`).
-*   **Daily Filtering:** Scan logs by temporal node (date).
-*   **Full CRUD:** Edit past entries to refine insights or delete anomalies.
-*   **JSON Export:** Instant "Copy to Clipboard" for AI analysis or external documentation.
+### Theme Designer
+Customize your environment with **12 Calibrated Themes** (including Nordic Light, Noir, and Void) or build your own:
+*   **Surface Control:** Granular transparency for cards and inputs.
+*   **Typographic Decoupling:** Separate color paths for System text vs. Data text.
+*   **Neutralized Interface:** All modals and settings perfectly synchronize with your active theme.
+
+### Sound Designer
+Design your own focus reminders:
+*   **Pitch Calibration:** Adjust frequencies (Hz) for notification tones.
+*   **Synthesizer Styles:** Choose between Sine, Square, Triangle, and Sawtooth waveforms.
+*   **Stochastic Mode:** Enable random frequency generation to prevent audio habituation.
+
+---
+
+## 📂 Data & Storage Node
+
+### Dossier-Style History
+Your work is no longer a simple list—it's a professional ledger:
+*   **Tiered Hierarchy:** Grouped information (Context ↔ Analysis ↔ Momentum).
+*   **Quick-Scannability:** Mini-badges in the collapsed view show Focus/Value scores and Goal status at a glance.
+*   **Full CRUD:** Edit past recordings to refine insights or delete anomalies.
+
+### Storage Portability
+*   **Custom JSON Node:** Specify exactly where your data is saved.
+*   **Auto-Load:** Switch between different log files for different projects; the app auto-loads existing data on selection.
+*   **Direct Access:** Open your data folder instantly from the settings menu.
 
 ---
 
@@ -62,7 +74,7 @@ npm start
 ```
 
 ### Production Build (Windows)
-To compile into a native standalone executable:
+To compile into a native standalone executable with the custom high-fidelity icon:
 ```bash
 npm run compile
 ```
@@ -70,22 +82,8 @@ The distributable `.exe` will be located in the `release/` directory.
 
 ---
 
-## ⚙️ System Requirements
-*   **OS:** Windows 10/11 (Optimized for frameless window management).
-*   **Runtime:** Node.js 18+.
-
----
-
 ## 📜 Philosophy: "Intentional Minimalism"
-Time Master is built on the belief that **friction is information**. By forcing a scientific audit of every hour, the app transforms "busy-work" into a sequence of verified technical victories.
-
----
-
-## ☕ Support
-
-If Time Master has sharpened your focus, consider supporting the protocol:
-
-[![Buy Me A Coffee](https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=&slug=btawaifi&button_colour=8B5CF6&font_colour=ffffff&font_family=Inter&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/btawaifi)
+Time Master is built on the belief that **friction is information**. By forcing an audit of every hour, the app transforms "busy-work" into a sequence of verified technical victories.
 
 ---
 *Created by BTawaifi*
