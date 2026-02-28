@@ -1,7 +1,5 @@
 # Time Master: The Enforcer Node
 
-[![Fuel the Protocol](https://img.buymeacoffee.com/button-api/?text=Fuel%20the%20Protocol&emoji=⚡&slug=btawaifi&button_colour=8B5CF6&font_colour=ffffff&font_family=Inter&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/btawaifi)
-
 **Maintain the Laboratory.** Time Master is a high-performance productivity enforcer designed for engineers and deep-work architects. It replaces passive tracking with a technical audit of every hour.
 
 ![Aesthetic](https://img.shields.io/badge/Aesthetic-Avant--Garde-blueviolet)
@@ -86,4 +84,7 @@ The distributable `.exe` will be located in the `release/` directory.
 Time Master is built on the belief that **friction is information**. By forcing an audit of every hour, the app transforms "busy-work" into a sequence of verified technical victories.
 
 ---
+
+[![Fuel the Protocol](https://img.buymeacoffee.com/button-api/?text=Fuel%20the%20Protocol&emoji=⚡&slug=btawaifi&button_colour=8B5CF6&font_colour=ffffff&font_family=Inter&outline_colour=ffffff&coffee_colour=FFDD00)](https://www.buymeacoffee.com/btawaifi)
+
 *Created by BTawaifi*
