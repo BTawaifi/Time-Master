@@ -65,18 +65,13 @@ ipcMain.on('save-log', (event, data, customPath) => {
     const dateKey = timestamp.toISOString().split('T')[0];
     const filePath = getLogPath(customPath);
     
-    console.log("Attempting to save log to:", filePath);
-
     let logs = {};
     try {
         if (fs.existsSync(filePath)) {
             const content = fs.readFileSync(filePath, 'utf8');
             logs = content ? JSON.parse(content) : {};
         }
-    } catch (e) { 
-        console.error("Error reading existing logs, starting fresh:", e); 
-        logs = {};
-    }
+    } catch (e) { logs = {}; }
 
     if (!logs[dateKey]) logs[dateKey] = [];
     logs[dateKey].push({
@@ -89,26 +84,21 @@ ipcMain.on('save-log', (event, data, customPath) => {
         const dir = path.dirname(filePath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(logs, null, 2));
-        console.log("Log saved successfully.");
-    } catch (err) { 
-        console.error("CRITICAL: Failed to write JSON log file:", err); 
-    }
+    } catch (err) { console.error("Failed to write log:", err); }
 
     if (mainWindow) {
         mainWindow.setAlwaysOnTop(false);
-        mainWindow.minimize();
     }
 });
 
 ipcMain.handle('get-logs', async (event, customPath) => {
     const filePath = getLogPath(customPath);
-    console.log("Retrieving logs from:", filePath);
     try {
         if (fs.existsSync(filePath)) {
             const content = fs.readFileSync(filePath, 'utf8');
             return JSON.parse(content);
         }
-    } catch (e) { console.error("Error retrieving logs:", e); }
+    } catch (e) { }
     return {};
 });
 
@@ -119,10 +109,7 @@ ipcMain.handle('update-logs', async (event, updatedLogs, customPath) => {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(filePath, JSON.stringify(updatedLogs, null, 2));
         return true;
-    } catch (e) {
-        console.error("Failed to update logs:", e);
-        return false;
-    }
+    } catch (e) { return false; }
 });
 
 ipcMain.handle('select-log-file', async () => {
@@ -141,6 +128,7 @@ ipcMain.handle('select-log-file', async () => {
 
 ipcMain.on('minimize-app', () => {
     if (mainWindow) {
+        mainWindow.setAlwaysOnTop(false);
         mainWindow.minimize();
     }
 });
@@ -162,11 +150,8 @@ ipcMain.on('close-app', () => {
 ipcMain.on('open-logs-folder', (event, customPath) => {
     const filePath = getLogPath(customPath);
     const dirPath = path.dirname(filePath);
-    console.log("IPC: Received open-logs-folder request for path:", dirPath);
     if (fs.existsSync(dirPath)) {
         shell.openPath(dirPath);
-    } else {
-        console.error("Path does not exist yet:", dirPath);
     }
 });
 
@@ -176,7 +161,7 @@ ipcMain.on('trigger-enforce', () => {
         mainWindow.show();
         mainWindow.focus();
         mainWindow.setVisibleOnAllWorkspaces(true);
-        mainWindow.setFullScreen(false); // Ensure it's not stuck in a weird state
+        mainWindow.setFullScreen(false);
         mainWindow.webContents.send('enforce-mode');
     }
 });
