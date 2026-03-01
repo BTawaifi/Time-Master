@@ -1,13 +1,13 @@
 const { app, BrowserWindow, ipcMain, screen, shell, dialog, Tray, Menu, powerSaveBlocker } = require('electron');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs').promises;
+const { existsSync } = require('fs');
 
 let mainWindow;
 let tray;
 let isQuitting = false;
 let psbId;
 
-// Prevent suspension immediately
 app.commandLine.appendSwitch('disable-renderer-backgrounding');
 app.commandLine.appendSwitch('disable-background-timer-throttling');
 
@@ -39,17 +39,15 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
-      backgroundThrottling: false, // Critical for keeping timer alive
+      backgroundThrottling: false,
     },
     frame: false,
     backgroundColor: '#121212',
     icon: path.join(__dirname, '../build/icon.png'),
     show: false,
-    skipTaskbar: false,
   });
 
   const isDev = !app.isPackaged;
-  
   if (isDev) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
@@ -60,13 +58,8 @@ function createWindow() {
     mainWindow.show();
   });
 
-  mainWindow.on('maximize', () => {
-    mainWindow.webContents.send('window-maximized', true);
-  });
-
-  mainWindow.on('unmaximize', () => {
-    mainWindow.webContents.send('window-maximized', false);
-  });
+  mainWindow.on('maximize', () => mainWindow.webContents.send('window-maximized', true));
+  mainWindow.on('unmaximize', () => mainWindow.webContents.send('window-maximized', false));
 
   mainWindow.on('close', (event) => {
     if (!isQuitting) {
@@ -80,55 +73,39 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
-  
-  // High-priority lock
   psbId = powerSaveBlocker.start('prevent-app-suspension');
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-      // Keep alive for tray
-  }
 });
 
 const getLogPath = (customPath) => {
-    if (customPath && typeof customPath === 'string' && customPath.trim() !== '') {
-        return customPath;
-    }
+    if (customPath && typeof customPath === 'string' && customPath.trim() !== '') return customPath;
     return path.join(app.getPath('userData'), 'time_master_logs.json');
 };
 
-ipcMain.on('save-log', (event, data, customPath) => {
+ipcMain.on('save-log', async (event, data, customPath) => {
     const timestamp = new Date();
     const dateKey = timestamp.toISOString().split('T')[0];
     const filePath = getLogPath(customPath);
     
     let logs = {};
     try {
-        if (fs.existsSync(filePath)) {
-            const content = fs.readFileSync(filePath, 'utf8');
+        if (existsSync(filePath)) {
+            const content = await fs.readFile(filePath, 'utf8');
             logs = content ? JSON.parse(content) : {};
         }
     } catch (e) { logs = {}; }
 
     if (!logs[dateKey]) logs[dateKey] = [];
-    logs[dateKey].push({
-        ...data,
-        timestamp: timestamp.toLocaleString(),
-        id: Date.now()
-    });
+    logs[dateKey].push({ ...data, timestamp: timestamp.toLocaleString(), id: Date.now() });
 
     try {
         const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(filePath, JSON.stringify(logs, null, 2));
+        if (!existsSync(dir)) await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(filePath, JSON.stringify(logs, null, 2));
     } catch (err) { console.error("Failed to write log:", err); }
 
     if (mainWindow) {
+        // Respect general stayOnTop if not in enforce mode
+        // But for safety after save, we drop the aggressive level
         mainWindow.setAlwaysOnTop(false);
     }
 });
@@ -136,8 +113,8 @@ ipcMain.on('save-log', (event, data, customPath) => {
 ipcMain.handle('get-logs', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     try {
-        if (fs.existsSync(filePath)) {
-            const content = fs.readFileSync(filePath, 'utf8');
+        if (existsSync(filePath)) {
+            const content = await fs.readFile(filePath, 'utf8');
             return JSON.parse(content);
         }
     } catch (e) { }
@@ -148,8 +125,8 @@ ipcMain.handle('update-logs', async (event, updatedLogs, customPath) => {
     const filePath = getLogPath(customPath);
     try {
         const dir = path.dirname(filePath);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(filePath, JSON.stringify(updatedLogs, null, 2));
+        if (!existsSync(dir)) await fs.mkdir(dir, { recursive: true });
+        await fs.writeFile(filePath, JSON.stringify(updatedLogs, null, 2));
         return true;
     } catch (e) { return false; }
 });
@@ -161,10 +138,7 @@ ipcMain.handle('select-log-file', async () => {
         filters: [{ name: 'JSON Files', extensions: ['json'] }],
         properties: ['openFile', 'promptToCreate']
     });
-    
-    if (!result.canceled && result.filePaths.length > 0) {
-        return result.filePaths[0];
-    }
+    if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
     return null;
 });
 
@@ -177,24 +151,23 @@ ipcMain.on('minimize-app', () => {
 
 ipcMain.on('maximize-app', () => {
     if (mainWindow) {
-        if (mainWindow.isMaximized()) {
-            mainWindow.unmaximize();
-        } else {
-            mainWindow.maximize();
-        }
+        if (mainWindow.isMaximized()) mainWindow.unmaximize();
+        else mainWindow.maximize();
     }
 });
 
-ipcMain.on('close-app', () => {
-    mainWindow.hide(); // Minimize to tray instead of quit
+ipcMain.on('close-app', () => mainWindow.hide());
+
+ipcMain.on('set-stay-on-top', (event, bool) => {
+    if (mainWindow) {
+        mainWindow.setAlwaysOnTop(bool);
+    }
 });
 
-ipcMain.on('open-logs-folder', (event, customPath) => {
+ipcMain.on('open-logs-folder', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     const dirPath = path.dirname(filePath);
-    if (fs.existsSync(dirPath)) {
-        shell.openPath(dirPath);
-    }
+    if (existsSync(dirPath)) shell.openPath(dirPath);
 });
 
 ipcMain.on('trigger-enforce', () => {
