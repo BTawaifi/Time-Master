@@ -401,7 +401,7 @@ function App() {
             {showToneModal && <CustomToneModal />}
             <div className="max-w-5xl mx-auto space-y-10">
                 <header className="flex items-center justify-between flex-wrap gap-8 border-b border-white/5 pb-8">
-                    <button onClick={() => setShowArchives(false)} className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all accent-text"><ArrowRight className="rotate-180" size={16} /> BACK TO LAB</button>
+                    <button onClick={() => { setShowArchives(false); setEditingId(null); setExpandedIds([]); }} className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all accent-text"><ArrowRight className="rotate-180" size={16} /> BACK TO LAB</button>
                     <div className="flex items-center gap-6 flex-wrap">
                         <div className="flex items-center bg-white/5 px-5 py-3 rounded-2xl border border-white/10 text-main">
                             <Calendar size={14} className="accent-text mr-4 opacity-40" />
