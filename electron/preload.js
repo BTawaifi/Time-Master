@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electron', {
   minimizeApp: () => ipcRenderer.send('minimize-app'),
   maximizeApp: () => ipcRenderer.send('maximize-app'),
   closeApp: () => ipcRenderer.send('close-app'),
+  setStayOnTop: (bool) => ipcRenderer.send('set-stay-on-top', bool),
   openLogsFolder: (customPath) => ipcRenderer.send('open-logs-folder', customPath),
   onMaximized: (callback) => ipcRenderer.on('window-maximized', (event, state) => callback(state)),
   onEnforce: (callback) => ipcRenderer.on('enforce-mode', (event, ...args) => callback(...args))
