@@ -1,23 +1,51 @@
-const { app, BrowserWindow, ipcMain, screen, shell, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, shell, dialog, Tray, Menu, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
+let tray;
+let isQuitting = false;
+let psbId;
+
+// Prevent suspension immediately
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+
+function createTray() {
+  const iconPath = path.join(__dirname, '../build/icon.png');
+  tray = new Tray(iconPath);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'Open Time Master', click: () => mainWindow.show() },
+    { type: 'separator' },
+    { label: 'Quit Laboratory', click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  tray.setToolTip('Time Master: The Enforcer Node');
+  tray.setContextMenu(contextMenu);
+  tray.on('click', () => mainWindow.show());
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 400,
+    minHeight: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false,
+      backgroundThrottling: false, // Critical for keeping timer alive
     },
     frame: false,
     backgroundColor: '#121212',
     icon: path.join(__dirname, '../build/icon.png'),
     show: false,
+    skipTaskbar: false,
   });
 
   const isDev = !app.isPackaged;
@@ -39,10 +67,22 @@ function createWindow() {
   mainWindow.on('unmaximize', () => {
     mainWindow.webContents.send('window-maximized', false);
   });
+
+  mainWindow.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+    return false;
+  });
 }
 
 app.whenReady().then(() => {
   createWindow();
+  createTray();
+  
+  // High-priority lock
+  psbId = powerSaveBlocker.start('prevent-app-suspension');
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -50,7 +90,9 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+      // Keep alive for tray
+  }
 });
 
 const getLogPath = (customPath) => {
@@ -144,7 +186,7 @@ ipcMain.on('maximize-app', () => {
 });
 
 ipcMain.on('close-app', () => {
-    app.quit();
+    mainWindow.hide(); // Minimize to tray instead of quit
 });
 
 ipcMain.on('open-logs-folder', (event, customPath) => {
@@ -157,9 +199,9 @@ ipcMain.on('open-logs-folder', (event, customPath) => {
 
 ipcMain.on('trigger-enforce', () => {
     if (mainWindow) {
-        mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
         mainWindow.show();
         mainWindow.focus();
+        mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
         mainWindow.setVisibleOnAllWorkspaces(true);
         mainWindow.setFullScreen(false);
         mainWindow.webContents.send('enforce-mode');
