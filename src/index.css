@@ -52,23 +52,58 @@
   color: var(--input-placeholder);
 }
 
-.data-text { color: var(--text-data); }
-.accent-text { color: var(--accent-color); }
-.accent-bg { background-color: var(--accent-color); }
-.accent-border { border-color: var(--accent-color); }
-.accent-contrast-text { color: var(--accent-contrast); }
+.data-text {
+  color: var(--text-data);
+}
 
-.drag { -webkit-app-region: drag; }
-.no-drag { -webkit-app-region: no-drag; }
+.accent-text {
+  color: var(--accent-color);
+}
+
+.accent-bg {
+  background-color: var(--accent-color);
+}
+
+.accent-border {
+  border-color: var(--accent-color);
+}
+
+.accent-contrast-text {
+  color: var(--accent-contrast);
+}
+
+.drag {
+  -webkit-app-region: drag;
+}
+
+.no-drag {
+  -webkit-app-region: no-drag;
+}
 
 /* Hide native date picker icon */
 input::-webkit-calendar-picker-indicator {
-    display: none;
-    -webkit-appearance: none;
+  display: none;
+  -webkit-appearance: none;
 }
 
+
+
+
+
 /* Custom Scrollbar */
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
