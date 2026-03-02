@@ -141,8 +141,9 @@ function App() {
 
 
 
-            window.electron.saveLog(logData, settings.logFilePath);
+            if (window.electron) window.electron.saveLog(logData, settings.logFilePath);
             setIsEnforced(false);
+            if (window.electron) window.electron.cancelEnforce();
             const reset = { activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', unlocked: false };
             if (!shouldPivot) {
                 setFormData(prev => ({ ...prev, ...reset }));
@@ -165,6 +166,7 @@ function App() {
 
 
         setIsEnforced(false);
+        if (window.electron) window.electron.cancelEnforce();
         const reset = { activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', unlocked: false };
         setFormData(prev => ({ ...prev, ...reset }));
         setTimeLeft(settings.timerDuration);
