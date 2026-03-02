@@ -169,7 +169,9 @@ ipcMain.handle('get-logs', async (event, customPath) => {
             const content = await fs.readFile(filePath, 'utf8');
             return JSON.parse(content);
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error("Failed to get logs:", e);
+    }
     return {};
 });
 
