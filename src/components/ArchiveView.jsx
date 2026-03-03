@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   ArrowRight,
   Calendar,
@@ -36,12 +36,15 @@ export const ArchiveView = ({
   const [expandedIds, setExpandedIds] = useState([]);
   const [editFields, setEditFields] = useState({});
 
-  const toggleExpand = (id) =>
-    setExpandedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-    );
+  const toggleExpand = useCallback(
+    (id) =>
+      setExpandedIds((prev) =>
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+      ),
+    [],
+  );
 
-  const getVisibleLogs = () => {
+  const logs = useMemo(() => {
     const visible = [];
     const sortedDates = Object.keys(archiveData).sort((a, b) =>
       b.localeCompare(a),
@@ -57,8 +60,7 @@ export const ArchiveView = ({
       }
     }
     return visible;
-  };
-  const logs = getVisibleLogs();
+  }, [archiveData, startDate, endDate]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
