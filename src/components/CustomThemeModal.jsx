@@ -1,6 +1,6 @@
 import React from "react";
 import { Palette, RefreshCcw, X } from "lucide-react";
-import { rgbaToHexAndAlpha, hexToRgba } from "../utils";
+import { rgbaToHexAndAlpha, hexToRgba } from "../utils.mjs";
 import { DEFAULT_SETTINGS } from "../constants";
 
 export const CustomThemeModal = ({
