@@ -20,6 +20,17 @@ import {
   Skull,
 } from "lucide-react";
 
+const ProgressBar = ({ value, colorClass }) => (
+  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+    <div
+      className={`h-full ${colorClass}`}
+      style={{
+        width: `${(value / 10) * 100}%`,
+      }}
+    ></div>
+  </div>
+);
+
 export const ArchiveView = ({
   archiveData,
   setArchiveData,
@@ -364,14 +375,7 @@ export const ArchiveView = ({
                               className="w-full accent-accent-color"
                             />
                           ) : (
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full accent-bg"
-                                style={{
-                                  width: `${(log.focusDepth / 10) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <ProgressBar value={log.focusDepth} colorClass="accent-bg" />
                           )}
                           <div className="flex items-center justify-between text-[10px] font-bold">
                             <span>SESSION VALUE</span>
@@ -397,14 +401,7 @@ export const ArchiveView = ({
                               className="w-full accent-accent-color"
                             />
                           ) : (
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-400"
-                                style={{
-                                  width: `${(log.utility / 10) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <ProgressBar value={log.utility} colorClass="bg-blue-400" />
                           )}
                           <div className="flex items-center justify-between text-[10px] font-bold">
                             <span>MENTAL ENERGY</span>
@@ -430,14 +427,7 @@ export const ArchiveView = ({
                               className="w-full accent-accent-color"
                             />
                           ) : (
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-yellow-400"
-                                style={{
-                                  width: `${(log.energyLevel / 10) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <ProgressBar value={log.energyLevel} colorClass="bg-yellow-400" />
                           )}
                         </div>
                       </div>
