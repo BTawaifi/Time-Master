@@ -1,7 +1,6 @@
 const { app, BrowserWindow, ipcMain, screen, shell, dialog, Tray, Menu, powerSaveBlocker } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
-const { existsSync } = require('fs');
 
 let mainWindow;
 let tray;
@@ -156,13 +155,15 @@ ipcMain.on('save-log', (event, data, customPath) => {
 
         let logs = {};
         try {
-            if (existsSync(filePath)) {
-                const content = await fs.readFile(filePath, 'utf8');
-                if (content && content.trim()) logs = JSON.parse(content);
-            }
+            const content = await fs.readFile(filePath, 'utf8');
+            if (content && content.trim()) logs = JSON.parse(content);
         } catch (e) {
-            console.error("Corrupted logs recovered:", e);
-            if (existsSync(filePath)) await fs.copyFile(filePath, `${filePath}.corrupt.bak`);
+            if (e.code !== 'ENOENT') {
+                console.error("Corrupted logs recovered:", e);
+                try {
+                    await fs.copyFile(filePath, `${filePath}.corrupt.bak`);
+                } catch (err) { }
+            }
             logs = {};
         }
 
@@ -177,7 +178,7 @@ ipcMain.on('save-log', (event, data, customPath) => {
 
         try {
             const dir = path.dirname(filePath);
-            if (!existsSync(dir)) await fs.mkdir(dir, { recursive: true });
+            await fs.mkdir(dir, { recursive: true }).catch(() => { });
 
             const tmpPath = `${filePath}.${Date.now()}.tmp`;
             await fs.writeFile(tmpPath, JSON.stringify(logs, null, 2));
@@ -200,12 +201,12 @@ ipcMain.on('save-log', (event, data, customPath) => {
 ipcMain.handle('get-logs', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     try {
-        if (existsSync(filePath)) {
-            const content = await fs.readFile(filePath, 'utf8');
-            return JSON.parse(content);
-        }
+        const content = await fs.readFile(filePath, 'utf8');
+        return JSON.parse(content);
     } catch (e) {
-        console.error("Failed to get logs:", e);
+        if (e.code !== 'ENOENT') {
+            console.error("Failed to get logs:", e);
+        }
     }
     return {};
 });
@@ -216,7 +217,7 @@ ipcMain.handle('update-logs', async (event, updatedLogs, customPath) => {
             const filePath = getLogPath(customPath);
             try {
                 const dir = path.dirname(filePath);
-                if (!existsSync(dir)) await fs.mkdir(dir, { recursive: true });
+                await fs.mkdir(dir, { recursive: true }).catch(() => { });
                 const tmpPath = `${filePath}.${Date.now()}.tmp`;
                 await fs.writeFile(tmpPath, JSON.stringify(updatedLogs, null, 2));
                 await fs.rename(tmpPath, filePath);
@@ -294,7 +295,10 @@ ipcMain.on('force-restore', () => {
 ipcMain.on('open-logs-folder', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     const dirPath = path.dirname(filePath);
-    if (existsSync(dirPath)) shell.openPath(dirPath);
+    try {
+        await fs.access(dirPath);
+        shell.openPath(dirPath);
+    } catch (e) { }
 });
 
 ipcMain.on('set-enforcement', (event, config) => {
