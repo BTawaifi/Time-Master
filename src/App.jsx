@@ -114,7 +114,7 @@ function App() {
             osc.start(audioCtx.currentTime);
             osc.stop(audioCtx.currentTime + dur);
         } catch (e) {
-            console.error('Failed to play sonic escalation:', e);
+            console.error("Sonic escalation failed:", e);
         }
     }, [enforcementLevel, isEnforced, settings.enforcement?.soundCrescendo]);
 

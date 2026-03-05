@@ -1,5 +1,5 @@
 import React from "react";
-import { Music, X, Sliders, Volume2 } from "lucide-react";
+import { Music, X, Volume2 } from "lucide-react";
 
 export const CustomToneModal = ({
   showToneModal,
