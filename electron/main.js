@@ -162,7 +162,9 @@ ipcMain.on('save-log', (event, data, customPath) => {
                 console.error("Corrupted logs recovered:", e);
                 try {
                     await fs.copyFile(filePath, `${filePath}.corrupt.bak`);
-                } catch (err) { }
+                } catch (backupErr) {
+                    console.error("Failed to backup corrupted logs:", backupErr);
+                }
             }
             logs = {};
         }
@@ -298,7 +300,9 @@ ipcMain.on('open-logs-folder', async (event, customPath) => {
     try {
         await fs.access(dirPath);
         shell.openPath(dirPath);
-    } catch (e) { }
+    } catch (e) {
+        // Directory does not exist or cannot be accessed
+    }
 });
 
 ipcMain.on('set-enforcement', (event, config) => {
