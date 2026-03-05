@@ -36,6 +36,8 @@ export const ArchiveView = ({
   const [expandedIds, setExpandedIds] = useState([]);
   const [editFields, setEditFields] = useState({});
 
+  const expandedIdsSet = useMemo(() => new Set(expandedIds), [expandedIds]);
+
   const toggleExpand = useCallback(
     (id) =>
       setExpandedIds((prev) =>
@@ -110,7 +112,7 @@ export const ArchiveView = ({
         ) : (
           logs.map((log) => {
             const isExpanded =
-              expandedIds.includes(log.id) || editingId === log.id;
+              expandedIdsSet.has(log.id) || editingId === log.id;
             const won =
               editingId === log.id
                 ? editFields.hypothesisValid
