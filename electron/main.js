@@ -1,6 +1,11 @@
 const { app, BrowserWindow, ipcMain, screen, shell, dialog, Tray, Menu, powerSaveBlocker } = require('electron');
 const path = require('path');
-const fs = require('fs').promises;
+const fs = require('fs');
+const fsPromises = fs.promises;
+
+function exists(p) {
+    return fsPromises.access(p).then(() => true).catch(() => false);
+}
 
 let mainWindow;
 let tray;
@@ -128,8 +133,8 @@ let allowedPathsFile = '';
 app.whenReady().then(async () => {
     allowedPathsFile = path.join(app.getPath('userData'), 'allowed_paths.json');
     try {
-        if (existsSync(allowedPathsFile)) {
-            const data = await fs.readFile(allowedPathsFile, 'utf8');
+        if (await exists(allowedPathsFile)) {
+            const data = await fsPromises.readFile(allowedPathsFile, 'utf8');
             const paths = JSON.parse(data);
             if (Array.isArray(paths)) {
                 paths.forEach(p => allowedPaths.add(p));
@@ -155,13 +160,17 @@ ipcMain.on('save-log', (event, data, customPath) => {
 
         let logs = {};
         try {
-            const content = await fs.readFile(filePath, 'utf8');
-            if (content && content.trim()) logs = JSON.parse(content);
+            if (await exists(filePath)) {
+                const content = await fsPromises.readFile(filePath, 'utf8');
+                if (content && content.trim()) logs = JSON.parse(content);
+            }
         } catch (e) {
             if (e.code !== 'ENOENT') {
                 console.error("Corrupted logs recovered:", e);
                 try {
-                    await fs.copyFile(filePath, `${filePath}.corrupt.bak`);
+                    if (await exists(filePath)) {
+                        await fsPromises.copyFile(filePath, `${filePath}.corrupt.bak`);
+                    }
                 } catch (backupErr) {
                     console.error("Failed to backup corrupted logs:", backupErr);
                 }
@@ -180,11 +189,11 @@ ipcMain.on('save-log', (event, data, customPath) => {
 
         try {
             const dir = path.dirname(filePath);
-            await fs.mkdir(dir, { recursive: true }).catch(() => { });
+            await fsPromises.mkdir(dir, { recursive: true }).catch(() => { });
 
             const tmpPath = `${filePath}.${Date.now()}.tmp`;
-            await fs.writeFile(tmpPath, JSON.stringify(logs, null, 2));
-            await fs.rename(tmpPath, filePath);
+            await fsPromises.writeFile(tmpPath, JSON.stringify(logs, null, 2));
+            await fsPromises.rename(tmpPath, filePath);
         } catch (err) { console.error("Failed to write log:", err); }
 
         // After save, release enforcer state
@@ -203,7 +212,7 @@ ipcMain.on('save-log', (event, data, customPath) => {
 ipcMain.handle('get-logs', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     try {
-        const content = await fs.readFile(filePath, 'utf8');
+        const content = await fsPromises.readFile(filePath, 'utf8');
         return JSON.parse(content);
     } catch (e) {
         if (e.code !== 'ENOENT') {
@@ -219,10 +228,10 @@ ipcMain.handle('update-logs', async (event, updatedLogs, customPath) => {
             const filePath = getLogPath(customPath);
             try {
                 const dir = path.dirname(filePath);
-                await fs.mkdir(dir, { recursive: true }).catch(() => { });
+                await fsPromises.mkdir(dir, { recursive: true }).catch(() => { });
                 const tmpPath = `${filePath}.${Date.now()}.tmp`;
-                await fs.writeFile(tmpPath, JSON.stringify(updatedLogs, null, 2));
-                await fs.rename(tmpPath, filePath);
+                await fsPromises.writeFile(tmpPath, JSON.stringify(updatedLogs, null, 2));
+                await fsPromises.rename(tmpPath, filePath);
                 resolve(true);
             } catch (e) { resolve(false); }
         }).catch(() => resolve(false));
@@ -240,7 +249,7 @@ ipcMain.handle('select-log-file', async () => {
         const selectedPath = result.filePaths[0];
         allowedPaths.add(selectedPath);
         try {
-            await fs.writeFile(allowedPathsFile, JSON.stringify([...allowedPaths], null, 2));
+            await fsPromises.writeFile(allowedPathsFile, JSON.stringify([...allowedPaths], null, 2));
         } catch (e) {
             console.error("Failed to save allowed path:", e);
         }
@@ -298,7 +307,7 @@ ipcMain.on('open-logs-folder', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     const dirPath = path.dirname(filePath);
     try {
-        await fs.access(dirPath);
+        await fsPromises.access(dirPath);
         shell.openPath(dirPath);
     } catch (e) {
         // Directory does not exist or cannot be accessed
@@ -330,7 +339,7 @@ ipcMain.on('set-eclipse-level', (event, level) => {
                 focusable: false,
                 hasShadow: false,
                 show: false,
-                webPreferences: { nodeIntegration: false, contextIsolation: true }
+                webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
             });
             win.setIgnoreMouseEvents(true, { forward: true });
             win.setAlwaysOnTop(true, 'screen-saver', 0);
