@@ -47,11 +47,12 @@ export const ArchiveView = ({
     [],
   );
 
+  const sortedDates = useMemo(() => {
+    return Object.keys(archiveData).sort((a, b) => b.localeCompare(a));
+  }, [archiveData]);
+
   const logs = useMemo(() => {
     const visible = [];
-    const sortedDates = Object.keys(archiveData).sort((a, b) =>
-      b.localeCompare(a),
-    );
     for (const date of sortedDates) {
       const isInRange =
         (!startDate || date >= startDate) && (!endDate || date <= endDate);
@@ -63,7 +64,7 @@ export const ArchiveView = ({
       }
     }
     return visible;
-  }, [archiveData, startDate, endDate]);
+  }, [archiveData, sortedDates, startDate, endDate]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
