@@ -27,6 +27,7 @@ export const SettingsProvider = ({ children }) => {
                 enforcement
             };
         } catch (e) {
+            console.error("Failed to parse settings from localStorage:", e);
             return DEFAULT_SETTINGS;
         }
     });
