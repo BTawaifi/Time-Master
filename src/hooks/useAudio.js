@@ -67,7 +67,9 @@ export const useAudio = (settings) => {
             oscillator.onended = () => { oscillator.disconnect(); gainNode.disconnect(); };
             oscillator.start(audioCtx.currentTime);
             oscillator.stop(audioCtx.currentTime + 1);
-        } catch (e) { }
+        } catch (e) {
+            console.error("Audio failed (alarm):", e);
+        }
     }, [getAudioCtx]);
 
     const playPeep = useCallback((freq = 660, dur = 0.1) => {
@@ -85,7 +87,9 @@ export const useAudio = (settings) => {
             oscillator.onended = () => { oscillator.disconnect(); gainNode.disconnect(); };
             oscillator.start(audioCtx.currentTime);
             oscillator.stop(audioCtx.currentTime + dur);
-        } catch (e) { }
+        } catch (e) {
+            console.error("Audio failed (peep):", e);
+        }
     }, [getAudioCtx]);
 
     return {
