@@ -106,8 +106,24 @@ app.on('before-quit', () => {
 });
 
 const getLogPath = (customPath) => {
-    if (customPath && typeof customPath === 'string' && customPath.trim() !== '') return customPath;
-    return path.join(app.getPath('userData'), 'time_master_logs.json');
+    const defaultPath = path.join(app.getPath('userData'), 'time_master_logs.json');
+    if (customPath && typeof customPath === 'string' && customPath.trim() !== '') {
+        try {
+            const normalizedPath = path.normalize(customPath.trim());
+            // Ensure path is an absolute path and resolves inside userData folder to prevent arbitrary directory opening
+            if (path.isAbsolute(normalizedPath) && normalizedPath.endsWith('.json')) {
+                const targetDir = path.dirname(normalizedPath);
+                const userDir = app.getPath('userData');
+                // Ensure target directory is inside userDir or is exactly userDir
+                if (targetDir === userDir || targetDir.startsWith(userDir + path.sep)) {
+                    return normalizedPath;
+                }
+            }
+        } catch (e) {
+            console.error("Invalid custom path provided:", e);
+        }
+    }
+    return defaultPath;
 };
 
 let logLock = Promise.resolve();
