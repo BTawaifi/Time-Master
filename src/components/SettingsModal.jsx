@@ -313,6 +313,11 @@ export const SettingsModal = ({
                   label: "Desktop Eclipse",
                   desc: "Dims background to black over time.",
                 },
+                {
+                  id: "kioskMode",
+                  label: "Kiosk Lock",
+                  desc: "Uses Electron kiosk mode during review enforcement.",
+                },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -355,6 +360,11 @@ export const SettingsModal = ({
                   id: "soundCrescendo",
                   label: "Sonic Escalation",
                   desc: "Volume & pitch increase over time.",
+                },
+                {
+                  id: "mantraGate",
+                  label: "Mantra Gate",
+                  desc: "Requires retyping the goal before save controls unlock.",
                 },
               ].map((opt) => (
                 <button

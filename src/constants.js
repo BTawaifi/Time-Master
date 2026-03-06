@@ -217,5 +217,7 @@ export const DEFAULT_SETTINGS = {
   enforcement: {
     desktopEclipse: false,
     soundCrescendo: false,
+    mantraGate: false,
+    kioskMode: false,
   },
 };

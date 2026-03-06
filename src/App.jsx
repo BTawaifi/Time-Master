@@ -21,13 +21,14 @@ function App() {
     const [showToneModal, setShowToneModal] = useState(null);
     const [archiveData, setArchiveData] = useState({});
     const [isMaximized, setIsMaximized] = useState(false);
-    const [formData, setFormData] = useState({ activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', bet: '' });
+    const [formData, setFormData] = useState({ activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', bet: '', unlocked: false });
 
     // Aggressive Protocol state
     const [enforcementLevel, setEnforcementLevel] = useState(0);
     const enforcementStartRef = useRef(null);
+    const escalationAudioRef = useRef(null);
 
-    const { playReminder, playAlarm, playPeep, reminderRef } = useAudio(settings);
+    const { playReminder, playAlarm, playPeep } = useAudio(settings);
 
     const {
         timeLeft, setTimeLeft,
@@ -51,6 +52,12 @@ function App() {
     }, [settings.stayOnTop]);
 
     useEffect(() => {
+        if (window.electron) {
+            window.electron.setKiosk(Boolean(isEnforced && settings.enforcement?.kioskMode));
+        }
+    }, [isEnforced, settings.enforcement?.kioskMode]);
+
+    useEffect(() => {
         const activeTheme = settings.themeId === 'custom' ? settings.customTheme : (THEMES.find(t => t.id === settings.themeId) || THEMES[0]);
         const root = document.documentElement;
         root.style.setProperty('--bg-color', activeTheme.bg);
@@ -65,12 +72,53 @@ function App() {
         root.style.setProperty('--text-dim', activeTheme.dim || 'rgba(255,255,255,0.4)');
     }, [settings.themeId, settings.customTheme]);
 
-    useEffect(() => {
-        if (window.electron) {
-            window.electron.onMaximized((state) => setIsMaximized(state));
-            window.electron.onEnforce(() => { setIsEnforced(true); setIsActive(false); });
-        }
+    const handleEnforce = useCallback(() => {
+        setIsEnforced(true);
+        setIsActive(false);
     }, [setIsActive]);
+
+    useEffect(() => {
+        if (!window.electron) {
+            return undefined;
+        }
+
+        const unsubscribeMaximized = window.electron.onMaximized((state) => setIsMaximized(state));
+        const unsubscribeEnforce = window.electron.onEnforce(handleEnforce);
+
+        return () => {
+            unsubscribeMaximized?.();
+            unsubscribeEnforce?.();
+        };
+    }, [handleEnforce]);
+
+    useEffect(() => {
+        const timers = [];
+        const scheduleReminder = (scope, enabled) => {
+            const config = settings.reminders?.[scope];
+            if (!enabled || !config?.enabled || !Number.isFinite(config.interval) || config.interval <= 0) {
+                return;
+            }
+            const timerId = window.setInterval(() => playReminder(scope), config.interval * 1000);
+            timers.push(timerId);
+        };
+
+        scheduleReminder('idle', !isActive && !isEnforced && !showArchives && !showSettingsModal && !showCustomModal && !showToneModal);
+        scheduleReminder('focus', isActive && !isEnforced && !showArchives);
+        scheduleReminder('review', isEnforced && !showArchives);
+
+        return () => {
+            timers.forEach(window.clearInterval);
+        };
+    }, [
+        settings.reminders,
+        playReminder,
+        isActive,
+        isEnforced,
+        showArchives,
+        showSettingsModal,
+        showCustomModal,
+        showToneModal,
+    ]);
 
     // Enforcement level escalation — increments every 30s while enforced
     useEffect(() => {
@@ -95,14 +143,45 @@ function App() {
 
     // Aggressive Protocol: Sonic Escalation — plays escalating tones during enforcement
     useEffect(() => {
-        if (!isEnforced || !settings.enforcement?.soundCrescendo || enforcementLevel < 2) return;
+        if (!isEnforced || !settings.enforcement?.soundCrescendo || enforcementLevel < 2) {
+            return undefined;
+        }
+
         const volume = Math.min(0.7, 0.05 + enforcementLevel * 0.06);
         const freq = Math.min(1400, 300 + enforcementLevel * 80);
         const dur = Math.min(1.0, 0.15 + enforcementLevel * 0.05);
+        let audioCtx;
+        let osc;
+        let gain;
+        let isDisposed = false;
+
+        const cleanup = () => {
+            if (isDisposed) {
+                return;
+            }
+
+            isDisposed = true;
+            escalationAudioRef.current = null;
+
+            try {
+                if (osc) {
+                    osc.onended = null;
+                }
+            } catch (_error) {}
+            try { osc?.disconnect(); } catch (_error) {}
+            try { gain?.disconnect(); } catch (_error) {}
+            try {
+                if (audioCtx && audioCtx.state !== 'closed') {
+                    audioCtx.close().catch(() => {});
+                }
+            } catch (_error) {}
+        };
+
         try {
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            escalationAudioRef.current = audioCtx;
+            osc = audioCtx.createOscillator();
+            gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.type = enforcementLevel > 5 ? 'sawtooth' : 'triangle';
@@ -110,27 +189,30 @@ function App() {
             gain.gain.setValueAtTime(0, audioCtx.currentTime);
             gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.05);
             gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + dur);
-            osc.onended = () => { osc.disconnect(); gain.disconnect(); audioCtx.close(); };
+            osc.onended = cleanup;
             osc.start(audioCtx.currentTime);
             osc.stop(audioCtx.currentTime + dur);
         } catch (e) {
+            cleanup();
             console.error("Sonic escalation failed:", e);
         }
+
+        return cleanup;
     }, [enforcementLevel, isEnforced, settings.enforcement?.soundCrescendo]);
 
 
 
-    const handleSystemMinimize = () => {
+    const handleSystemMinimize = useCallback(() => {
         if (settings.autoMinimize && window.electron) {
             window.electron.minimizeApp();
         }
-    };
+    }, [settings.autoMinimize]);
 
     useEffect(() => {
         if (isActive && !isEnforced) {
             handleSystemMinimize();
         }
-    }, [isActive, isEnforced, settings.autoMinimize]);
+    }, [isActive, isEnforced, handleSystemMinimize]);
 
     const buildLogData = useCallback((base, isSkipped = false) => {
         return { ...base };
