@@ -113,7 +113,9 @@ function App() {
             osc.onended = () => { osc.disconnect(); gain.disconnect(); audioCtx.close(); };
             osc.start(audioCtx.currentTime);
             osc.stop(audioCtx.currentTime + dur);
-        } catch (e) { }
+        } catch (e) {
+            console.error("Sonic escalation failed:", e);
+        }
     }, [enforcementLevel, isEnforced, settings.enforcement?.soundCrescendo]);
 
 
