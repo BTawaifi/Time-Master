@@ -50,7 +50,7 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
             contextIsolation: true,
-            sandbox: false,
+            sandbox: true,
             backgroundThrottling: false,
         },
         frame: false,
@@ -95,12 +95,6 @@ function createWindow() {
 
 }
 
-app.whenReady().then(() => {
-    createWindow();
-    createTray();
-    psbId = powerSaveBlocker.start('prevent-app-suspension');
-});
-
 app.on('before-quit', () => {
     isQuitting = true;
 });
@@ -108,6 +102,9 @@ app.on('before-quit', () => {
 const getLogPath = (customPath) => {
     const defaultPath = path.join(app.getPath('userData'), 'time_master_logs.json');
     if (customPath && typeof customPath === 'string' && customPath.trim() !== '') {
+        if (allowedPaths.has(customPath)) {
+            return customPath;
+        }
         try {
             const normalizedPath = path.normalize(customPath.trim());
             // Ensure path is an absolute path and resolves inside userData folder to prevent arbitrary directory opening
@@ -125,6 +122,28 @@ const getLogPath = (customPath) => {
     }
     return defaultPath;
 };
+
+let allowedPaths = new Set();
+let allowedPathsFile = '';
+
+app.whenReady().then(async () => {
+    allowedPathsFile = path.join(app.getPath('userData'), 'allowed_paths.json');
+    try {
+        if (existsSync(allowedPathsFile)) {
+            const data = await fs.readFile(allowedPathsFile, 'utf8');
+            const paths = JSON.parse(data);
+            if (Array.isArray(paths)) {
+                paths.forEach(p => allowedPaths.add(p));
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load allowed paths:", e);
+    }
+
+    createWindow();
+    createTray();
+    psbId = powerSaveBlocker.start('prevent-app-suspension');
+});
 
 let logLock = Promise.resolve();
 const getLocalDateKey = (date) => new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().split('T')[0];
@@ -185,7 +204,9 @@ ipcMain.handle('get-logs', async (event, customPath) => {
             const content = await fs.readFile(filePath, 'utf8');
             return JSON.parse(content);
         }
-    } catch (e) { }
+    } catch (e) {
+        console.error("Failed to get logs:", e);
+    }
     return {};
 });
 
@@ -212,7 +233,16 @@ ipcMain.handle('select-log-file', async () => {
         filters: [{ name: 'JSON Files', extensions: ['json'] }],
         properties: ['openFile', 'promptToCreate']
     });
-    if (!result.canceled && result.filePaths.length > 0) return result.filePaths[0];
+    if (!result.canceled && result.filePaths.length > 0) {
+        const selectedPath = result.filePaths[0];
+        allowedPaths.add(selectedPath);
+        try {
+            await fs.writeFile(allowedPathsFile, JSON.stringify([...allowedPaths], null, 2));
+        } catch (e) {
+            console.error("Failed to save allowed path:", e);
+        }
+        return selectedPath;
+    }
     return null;
 });
 

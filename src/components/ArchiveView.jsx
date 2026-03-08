@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from "react";
+import { ProgressBar } from "./ProgressBar";
 import {
   ArrowRight,
   Calendar,
@@ -20,6 +21,17 @@ import {
   Skull,
 } from "lucide-react";
 
+const ProgressBar = ({ value, colorClass }) => (
+  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+    <div
+      className={`h-full ${colorClass}`}
+      style={{
+        width: `${(value / 10) * 100}%`,
+      }}
+    ></div>
+  </div>
+);
+
 export const ArchiveView = ({
   archiveData,
   setArchiveData,
@@ -36,6 +48,8 @@ export const ArchiveView = ({
   const [expandedIds, setExpandedIds] = useState([]);
   const [editFields, setEditFields] = useState({});
 
+  const expandedIdsSet = useMemo(() => new Set(expandedIds), [expandedIds]);
+
   const toggleExpand = useCallback(
     (id) =>
       setExpandedIds((prev) =>
@@ -44,11 +58,12 @@ export const ArchiveView = ({
     [],
   );
 
+  const sortedDates = useMemo(() => {
+    return Object.keys(archiveData).sort((a, b) => b.localeCompare(a));
+  }, [archiveData]);
+
   const logs = useMemo(() => {
     const visible = [];
-    const sortedDates = Object.keys(archiveData).sort((a, b) =>
-      b.localeCompare(a),
-    );
     for (const date of sortedDates) {
       const isInRange =
         (!startDate || date >= startDate) && (!endDate || date <= endDate);
@@ -60,7 +75,7 @@ export const ArchiveView = ({
       }
     }
     return visible;
-  }, [archiveData, startDate, endDate]);
+  }, [archiveData, sortedDates, startDate, endDate]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-10">
@@ -110,7 +125,7 @@ export const ArchiveView = ({
         ) : (
           logs.map((log) => {
             const isExpanded =
-              expandedIds.includes(log.id) || editingId === log.id;
+              expandedIdsSet.has(log.id) || editingId === log.id;
             const won =
               editingId === log.id
                 ? editFields.hypothesisValid
@@ -364,14 +379,7 @@ export const ArchiveView = ({
                               className="w-full accent-accent-color"
                             />
                           ) : (
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full accent-bg"
-                                style={{
-                                  width: `${(log.focusDepth / 10) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <ProgressBar value={log.focusDepth} colorClass="accent-bg" />
                           )}
                           <div className="flex items-center justify-between text-[10px] font-bold">
                             <span>SESSION VALUE</span>
@@ -397,14 +405,7 @@ export const ArchiveView = ({
                               className="w-full accent-accent-color"
                             />
                           ) : (
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-400"
-                                style={{
-                                  width: `${(log.utility / 10) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <ProgressBar value={log.utility} colorClass="bg-blue-400" />
                           )}
                           <div className="flex items-center justify-between text-[10px] font-bold">
                             <span>MENTAL ENERGY</span>
@@ -430,14 +431,7 @@ export const ArchiveView = ({
                               className="w-full accent-accent-color"
                             />
                           ) : (
-                            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-yellow-400"
-                                style={{
-                                  width: `${(log.energyLevel / 10) * 100}%`,
-                                }}
-                              ></div>
-                            </div>
+                            <ProgressBar value={log.energyLevel} colorClass="bg-yellow-400" />
                           )}
                         </div>
                       </div>
