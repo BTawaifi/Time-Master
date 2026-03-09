@@ -37,6 +37,7 @@ export const ArchiveView = ({
   const [expandedIds, setExpandedIds] = useState([]);
   const [editFields, setEditFields] = useState({});
   const [archiveError, setArchiveError] = useState("");
+  const [copied, setCopied] = useState(false);
 
   const expandedIdsSet = useMemo(() => new Set(expandedIds), [expandedIds]);
 
@@ -131,12 +132,14 @@ export const ArchiveView = ({
             />
           </div>
           <button
-            onClick={() =>
-              navigator.clipboard.writeText(JSON.stringify(logs, null, 2))
-            }
+            onClick={() => {
+              navigator.clipboard.writeText(JSON.stringify(logs, null, 2));
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
             className="px-6 py-3 accent-bg accent-contrast-text text-xs font-black rounded-2xl hover:opacity-80 transition-all flex items-center gap-3 shadow-[0_0_30px_rgba(0,0,0,0.2)]"
           >
-            <ClipboardCheck size={18} /> COPY RECORDS ({logs.length})
+            <ClipboardCheck size={18} /> {copied ? "COPIED!" : `COPY RECORDS (${logs.length})`}
           </button>
         </div>
       </header>
