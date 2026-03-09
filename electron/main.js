@@ -502,7 +502,7 @@ ipcMain.on('set-eclipse-level', (event, level) => {
                 webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true }
             });
             win.setIgnoreMouseEvents(true, { forward: true });
-            win.setAlwaysOnTop(true, 'screen-saver', 0);
+            win.setAlwaysOnTop(true, 'status');
             win.loadFile(path.join(__dirname, 'eclipse.html'));
             win.setOpacity(0);
             win.once('ready-to-show', () => win.show());
