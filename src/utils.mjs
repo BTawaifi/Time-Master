@@ -2,16 +2,17 @@ export const rgbaToHexAndAlpha = (rgba) => {
   if (!rgba || typeof rgba !== "string" || !rgba.startsWith("rgba")) {
     return { hex: "#ffffff", alpha: 0.05 };
   }
-  const clean = rgba
-    .replace("rgba(", "")
-    .replace(")", "")
-    .split(",")
-    .map((s) => s.trim());
 
-  const r = clean[0] !== "" && !isNaN(clean[0]) ? parseInt(clean[0]) : 255;
-  const g = clean[1] !== "" && !isNaN(clean[1]) ? parseInt(clean[1]) : 255;
-  const b = clean[2] !== "" && !isNaN(clean[2]) ? parseInt(clean[2]) : 255;
-  const a = clean[3] !== "" && !isNaN(clean[3]) ? parseFloat(clean[3]) : 0.05;
+  const match = rgba.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)/i);
+
+  if (!match) {
+    return { hex: "#ffffff", alpha: 0.05 };
+  }
+
+  const r = parseInt(match[1], 10);
+  const g = parseInt(match[2], 10);
+  const b = parseInt(match[3], 10);
+  const a = match[4] !== undefined ? parseFloat(match[4]) : 0.05;
 
   return {
     hex:
