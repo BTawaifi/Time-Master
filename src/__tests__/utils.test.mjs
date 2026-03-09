@@ -72,3 +72,35 @@ test('hexToRgba handles short/incomplete hex strings', () => {
   assert.strictEqual(hexToRgba('#ff0', 1), 'rgba(255, 0, 0, 1)');
   assert.strictEqual(hexToRgba('#ff00', 1), 'rgba(255, 0, 0, 1)');
 });
+
+test('rgbaToHexAndAlpha handles strings without ending parentheses', () => {
+  const result = rgbaToHexAndAlpha('rgba(255, 128, 64, 0.5');
+  assert.strictEqual(result.hex, '#ff8040');
+  assert.strictEqual(result.alpha, 0.5);
+
+  const result2 = rgbaToHexAndAlpha('rgba(1, 2, 3');
+  assert.strictEqual(result2.hex, '#010203');
+  assert.strictEqual(result2.alpha, 0.05); // default alpha
+
+  const result3 = rgbaToHexAndAlpha('rgba(1, 2');
+  assert.strictEqual(result3.hex, '#0102ff');
+  assert.strictEqual(result3.alpha, 0.05);
+});
+
+test('rgbaToHexAndAlpha handles strings without spaces but missing parenthesis', () => {
+  const result = rgbaToHexAndAlpha('rgba(100,200,300,0.1');
+  assert.strictEqual(result.hex, '#64c92c');
+  assert.strictEqual(result.alpha, 0.1);
+});
+
+test('rgbaToHexAndAlpha handles strings ending in comma without spaces', () => {
+  const result = rgbaToHexAndAlpha('rgba(100,200,300,');
+  assert.strictEqual(result.hex, '#64c92c');
+  assert.strictEqual(result.alpha, 0.05);
+});
+
+test('rgbaToHexAndAlpha hits line 39 via internal break logic', () => {
+  const result = rgbaToHexAndAlpha('rgba(1,2,3,4,5');
+  assert.strictEqual(result.hex, '#010203');
+  assert.strictEqual(result.alpha, 4);
+});

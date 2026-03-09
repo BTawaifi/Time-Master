@@ -2,16 +2,62 @@ export const rgbaToHexAndAlpha = (rgba) => {
   if (!rgba || typeof rgba !== "string" || !rgba.startsWith("rgba")) {
     return { hex: "#ffffff", alpha: 0.05 };
   }
-  const clean = rgba
-    .replace("rgba(", "")
-    .replace(")", "")
-    .split(",")
-    .map((s) => s.trim());
 
-  const r = clean[0] !== "" && !isNaN(clean[0]) ? parseInt(clean[0]) : 255;
-  const g = clean[1] !== "" && !isNaN(clean[1]) ? parseInt(clean[1]) : 255;
-  const b = clean[2] !== "" && !isNaN(clean[2]) ? parseInt(clean[2]) : 255;
-  const a = clean[3] !== "" && !isNaN(clean[3]) ? parseFloat(clean[3]) : 0.05;
+  let r = 255, g = 255, b = 255, a = 0.05;
+  let part = 0;
+  let currentStart = -1;
+
+  let i = 4;
+  if (rgba.charCodeAt(4) === 40) i = 5; // '(' is 40
+
+  const len = rgba.length;
+  for (; i < len; i++) {
+    const charCode = rgba.charCodeAt(i);
+    // 32 is space, 41 is ')'
+    if (charCode === 32 || charCode === 41) {
+      if (currentStart !== -1) {
+          const val = rgba.substring(currentStart, i);
+          if (val !== "" && !isNaN(val)) {
+            if (part === 0) r = parseInt(val, 10);
+            else if (part === 1) g = parseInt(val, 10);
+            else if (part === 2) b = parseInt(val, 10);
+            else if (part === 3) a = parseFloat(val);
+          }
+          currentStart = -1;
+      }
+      continue;
+    }
+
+    // 44 is ','
+    if (charCode === 44) {
+      if (currentStart !== -1) {
+          const val = rgba.substring(currentStart, i);
+          if (val !== "" && !isNaN(val)) {
+            if (part === 0) r = parseInt(val, 10);
+            else if (part === 1) g = parseInt(val, 10);
+            else if (part === 2) b = parseInt(val, 10);
+            else if (part === 3) a = parseFloat(val);
+          }
+          currentStart = -1;
+      }
+      part++;
+      if (part > 3) break;
+    } else {
+      if (currentStart === -1) {
+        currentStart = i;
+      }
+    }
+  }
+
+  if (currentStart !== -1 && part <= 3) {
+      const val = rgba.substring(currentStart);
+      if (val !== "" && !isNaN(val)) {
+        if (part === 0) r = parseInt(val, 10);
+        else if (part === 1) g = parseInt(val, 10);
+        else if (part === 2) b = parseInt(val, 10);
+        else if (part === 3) a = parseFloat(val);
+      }
+  }
 
   return {
     hex:
