@@ -58,10 +58,10 @@ export const ArchiveView = ({
       const isInRange =
         (!startDate || date >= startDate) && (!endDate || date <= endDate);
       if (isInRange) {
-        const dayLogs = [...archiveData[date]]
-          .reverse()
-          .map((l) => ({ ...l, date }));
-        visible.push(...dayLogs);
+        const dayLogs = archiveData[date];
+        for (let i = dayLogs.length - 1; i >= 0; i--) {
+          visible.push({ ...dayLogs[i], date });
+        }
       }
     }
     return visible;
