@@ -213,22 +213,25 @@ app.on('before-quit', () => {
 });
 
 const getLogPath = (customPath) => {
-    const defaultPath = path.join(app.getPath('userData'), 'time_master_logs.json');
+    const defaultPath = path.resolve(app.getPath('userData'), 'time_master_logs.json');
     if (customPath && typeof customPath === 'string' && customPath.trim() !== '') {
-        const normalizedPath = path.normalize(customPath.trim());
+        const resolvedPath = path.resolve(customPath.trim());
 
-        if (allowedPaths.has(normalizedPath)) {
-            return normalizedPath;
+        if (allowedPaths.has(resolvedPath)) {
+            return resolvedPath;
         }
 
         try {
             // Ensure path is an absolute path and resolves inside userData folder to prevent arbitrary directory opening
-            if (path.isAbsolute(normalizedPath) && normalizedPath.endsWith('.json')) {
-                const targetDir = path.dirname(normalizedPath);
+            // We explicitly block allowed_paths.json to prevent it from being overwritten via log handlers
+            if (resolvedPath !== allowedPathsFile && resolvedPath.endsWith('.json')) {
                 const userDir = app.getPath('userData');
-                // Ensure target directory is inside userDir or is exactly userDir
-                if (targetDir === userDir || targetDir.startsWith(userDir + path.sep)) {
-                    return normalizedPath;
+                const relative = path.relative(userDir, resolvedPath);
+
+                const isInsideUserData = relative && !relative.startsWith('..') && !path.isAbsolute(relative);
+
+                if (isInsideUserData) {
+                    return resolvedPath;
                 }
             }
         } catch (e) {
@@ -242,7 +245,7 @@ let allowedPaths = new Set();
 let allowedPathsFile = '';
 
 app.whenReady().then(async () => {
-    allowedPathsFile = path.join(app.getPath('userData'), 'allowed_paths.json');
+    allowedPathsFile = path.resolve(app.getPath('userData'), 'allowed_paths.json');
     try {
         if (await exists(allowedPathsFile)) {
             const data = await fsPromises.readFile(allowedPathsFile, 'utf8');
@@ -250,7 +253,7 @@ app.whenReady().then(async () => {
             if (Array.isArray(paths)) {
                 paths
                     .filter(p => typeof p === 'string' && p.trim() !== '')
-                    .map(p => path.normalize(p))
+                    .map(p => path.resolve(p))
                     .forEach(p => allowedPaths.add(p));
             }
         }
@@ -390,7 +393,7 @@ ipcMain.handle('select-log-file', async () => {
         properties: ['openFile', 'promptToCreate']
     });
     if (!result.canceled && result.filePaths.length > 0) {
-        const selectedPath = path.normalize(result.filePaths[0]);
+        const selectedPath = path.resolve(result.filePaths[0]);
         allowedPaths.add(selectedPath);
         try {
             await fsPromises.writeFile(allowedPathsFile, JSON.stringify([...allowedPaths], null, 2));
@@ -464,6 +467,18 @@ ipcMain.on('force-restore', () => {
 ipcMain.on('open-logs-folder', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     const dirPath = path.dirname(filePath);
+
+    // Security: Only allow opening directories that are either the userData folder
+    // or the parent folder of an explicitly allowed log file.
+    const userDir = app.getPath('userData');
+    const isUserDataDir = dirPath === userDir;
+    const isAllowedCustomDir = allowedPaths.has(filePath);
+
+    if (!isUserDataDir && !isAllowedCustomDir) {
+        console.error('Blocked attempt to open unauthorized directory:', dirPath);
+        return;
+    }
+
     try {
         await fsPromises.access(dirPath);
         shell.openPath(dirPath);
