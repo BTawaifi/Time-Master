@@ -177,7 +177,7 @@ export const DEFAULT_SETTINGS = {
   themeId: "enforcer",
   autoMinimize: true,
   stayOnTop: false,
-  pomodoroOnly: false,
+  latencyBlocks: false,
   timerDuration: 25 * 60,
   restDuration: 5 * 60,
   logFilePath: "",

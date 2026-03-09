@@ -63,7 +63,7 @@ export const normalizeSettings = (parsed, defaults, themeIds = []) => {
     themeId: validThemeIds.has(parsed.themeId) ? parsed.themeId : defaults.themeId,
     autoMinimize: asBoolean(parsed.autoMinimize, defaults.autoMinimize),
     stayOnTop: asBoolean(parsed.stayOnTop, defaults.stayOnTop),
-    pomodoroOnly: asBoolean(parsed.pomodoroOnly, defaults.pomodoroOnly),
+    latencyBlocks: asBoolean(parsed.latencyBlocks, defaults.latencyBlocks),
     timerDuration: Math.round(asNumberInRange(parsed.timerDuration, defaults.timerDuration, 60, 86400)),
     restDuration: Math.round(asNumberInRange(parsed.restDuration, defaults.restDuration, 60, 86400)),
     logFilePath: asString(parsed.logFilePath, defaults.logFilePath),

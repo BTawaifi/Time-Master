@@ -33,9 +33,9 @@ function App() {
     const {
         timeLeft, setTimeLeft,
         isActive, setIsActive,
-        pomodoroState, setPomodoroState,
+        blockState, setBlockState,
         focusCount, setFocusCount,
-        adjustTimer, resetTimer, forceFinish
+        adjustTimer, resetTimer, forceFinish, advanceBlock
     } = useTimer(settings, setSettings, playPeep, playAlarm, setIsEnforced);
 
     // Sync enforcement config to Electron main process
@@ -310,8 +310,8 @@ function App() {
                 <ActiveTimerView
                     settings={settings}
                     setSettings={setSettings}
-                    pomodoroState={pomodoroState}
-                    setPomodoroState={setPomodoroState}
+                    blockState={blockState}
+                    setBlockState={setBlockState}
                     focusCount={focusCount}
                     setFocusCount={setFocusCount}
                     timeLeft={timeLeft}
@@ -324,6 +324,7 @@ function App() {
                     forceFinish={forceFinish}
                     resetTimer={resetTimer}
                     playPeep={playPeep}
+                    advanceBlock={advanceBlock}
                 />
             ) : (
                 <SessionReviewView
