@@ -6,7 +6,7 @@ const defaults = {
   themeId: 'enforcer',
   autoMinimize: true,
   stayOnTop: false,
-  pomodoroOnly: false,
+  latencyBlocks: false,
   timerDuration: 1500,
   restDuration: 300,
   logFilePath: '',
@@ -47,7 +47,7 @@ test('normalizeSettings preserves valid values and theme ids', () => {
 test('normalizeSettings clamps invalid nested values back to safe ranges/defaults', () => {
   const normalized = normalizeSettings({
     themeId: 'broken',
-    pomodoroOnly: 'yes',
+    latencyBlocks: 'yes',
     timerDuration: -10,
     restDuration: Number.POSITIVE_INFINITY,
     logFilePath: 44,
@@ -58,7 +58,7 @@ test('normalizeSettings clamps invalid nested values back to safe ranges/default
   }, defaults, ['enforcer', 'custom']);
 
   assert.equal(normalized.themeId, 'enforcer');
-  assert.equal(normalized.pomodoroOnly, false);
+  assert.equal(normalized.latencyBlocks, false);
   assert.equal(normalized.timerDuration, defaults.timerDuration);
   assert.equal(normalized.restDuration, defaults.restDuration);
   assert.equal(normalized.logFilePath, '');
