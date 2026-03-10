@@ -46,9 +46,19 @@ test('hexToRgba handles standard hex', () => {
   assert.strictEqual(hexToRgba('#000000', 0), 'rgba(0, 0, 0, 0)');
 });
 
-test('hexToRgba handles invalid or missing hex inputs', () => {
-  assert.strictEqual(hexToRgba(null, 0.5), 'rgba(0, 0, 0, 0.5)');
-  assert.strictEqual(hexToRgba('', 0.5), 'rgba(0, 0, 0, 0.5)');
+test('hexToRgba handles invalid inputs', () => {
+  assert.strictEqual(hexToRgba(null, 1), 'rgba(0, 0, 0, 1)');
+  assert.strictEqual(hexToRgba(undefined, 0.5), 'rgba(0, 0, 0, 0.5)');
+  assert.strictEqual(hexToRgba('', 0.2), 'rgba(0, 0, 0, 0.2)');
   assert.strictEqual(hexToRgba(123456, 1), 'rgba(0, 0, 0, 1)');
-  assert.strictEqual(hexToRgba('rgb(255, 0, 0)', 1), 'rgba(0, 0, 0, 1)');
+  assert.strictEqual(hexToRgba({}, 1), 'rgba(0, 0, 0, 1)');
+});
+
+test('hexToRgba handles missing # prefix', () => {
+  assert.strictEqual(hexToRgba('ff0000', 1), 'rgba(0, 0, 0, 1)');
+});
+
+test('hexToRgba handles invalid characters within hex string', () => {
+  assert.strictEqual(hexToRgba('#zzzzzz', 1), 'rgba(0, 0, 0, 1)');
+  assert.strictEqual(hexToRgba('#ffzz00', 1), 'rgba(255, 0, 0, 1)');
 });
