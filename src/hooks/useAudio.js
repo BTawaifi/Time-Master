@@ -68,7 +68,7 @@ export const useAudio = (settings) => {
             oscillator.start(audioCtx.currentTime);
             oscillator.stop(audioCtx.currentTime + 1);
         } catch (e) {
-            console.error("Audio failed:", e);
+            console.error("Audio failed (alarm):", e);
         }
     }, [getAudioCtx]);
 
@@ -88,7 +88,7 @@ export const useAudio = (settings) => {
             oscillator.start(audioCtx.currentTime);
             oscillator.stop(audioCtx.currentTime + dur);
         } catch (e) {
-            console.error("Audio failed:", e);
+            console.error("Audio failed (peep):", e);
         }
     }, [getAudioCtx]);
 
