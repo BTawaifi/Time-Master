@@ -9,6 +9,65 @@ const {
     normalizeEclipseLevel,
     isValidLogPayload,
 } = require('./validation');
+const { buildMigrationTargets } = require('./storageMigration');
+
+const LOCAL_APP_DATA_ROOT = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Local');
+const LOCAL_APP_BASE_DIR = path.join(LOCAL_APP_DATA_ROOT, 'time-master');
+const LOCAL_USER_DATA_DIR = path.join(LOCAL_APP_BASE_DIR, 'state');
+const LOCAL_SESSION_DATA_DIR = path.join(LOCAL_APP_BASE_DIR, 'session-data-v2');
+const LEGACY_USER_DATA_DIR = app.getPath('userData');
+const PREVIOUS_LOCAL_USER_DATA_DIR = LOCAL_APP_BASE_DIR;
+
+function copyPathSync(sourcePath, destinationPath) {
+    const stats = fs.statSync(sourcePath);
+
+    if (stats.isDirectory()) {
+        fs.mkdirSync(destinationPath, { recursive: true });
+        for (const child of fs.readdirSync(sourcePath)) {
+            copyPathSync(path.join(sourcePath, child), path.join(destinationPath, child));
+        }
+        return;
+    }
+
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.copyFileSync(sourcePath, destinationPath);
+}
+
+function migrateLegacyUserDataSync() {
+    fs.mkdirSync(LOCAL_USER_DATA_DIR, { recursive: true });
+    fs.mkdirSync(LOCAL_SESSION_DATA_DIR, { recursive: true });
+
+    const migrationSources = [LEGACY_USER_DATA_DIR, PREVIOUS_LOCAL_USER_DATA_DIR];
+    const migrationTargets = buildMigrationTargets({
+        localUserDataDir: LOCAL_USER_DATA_DIR,
+        localSessionDataDir: LOCAL_SESSION_DATA_DIR,
+    });
+
+    for (const sourceRoot of migrationSources) {
+        if (!sourceRoot || sourceRoot === LOCAL_USER_DATA_DIR || sourceRoot === LOCAL_SESSION_DATA_DIR || !fs.existsSync(sourceRoot)) {
+            continue;
+        }
+
+        for (const { entryName, destinationRoot } of migrationTargets) {
+            const sourcePath = path.join(sourceRoot, entryName);
+            const destinationPath = path.join(destinationRoot, entryName);
+
+            if (!fs.existsSync(sourcePath) || fs.existsSync(destinationPath)) {
+                continue;
+            }
+
+            try {
+                copyPathSync(sourcePath, destinationPath);
+            } catch (error) {
+                console.error(`Failed to migrate ${entryName}:`, error);
+            }
+        }
+    }
+}
+
+migrateLegacyUserDataSync();
+app.setPath('userData', LOCAL_USER_DATA_DIR);
+app.setPath('sessionData', LOCAL_SESSION_DATA_DIR);
 
 function exists(p) {
     return fsPromises.access(p).then(() => true).catch(() => false);
@@ -22,6 +81,20 @@ let psbId;
 let enforcementConfig = normalizeEnforcementConfig();
 let eclipseWindows = [];
 let isStayOnTopGlobal = false;
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
+
+function showMainWindow() {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+        return;
+    }
+
+    if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+    }
+
+    mainWindow.show();
+    mainWindow.focus();
+}
 
 function closeEclipseWindows() {
     eclipseWindows.forEach(win => {
@@ -37,7 +110,7 @@ function createTray() {
     const iconPath = path.join(__dirname, '../build/icon.png');
     tray = new Tray(iconPath);
     const contextMenu = Menu.buildFromTemplate([
-        { label: 'Open Time Master', click: () => mainWindow.show() },
+        { label: 'Open Time Master', click: () => showMainWindow() },
         { type: 'separator' },
         {
             label: 'Quit Laboratory', click: () => {
@@ -48,10 +121,12 @@ function createTray() {
     ]);
     tray.setToolTip('Time Master: The Enforcer Node');
     tray.setContextMenu(contextMenu);
-    tray.on('click', () => mainWindow.show());
+    tray.on('click', () => showMainWindow());
 }
 
 function createWindow() {
+    const useTransparentWindow = process.platform === 'darwin';
+
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -65,7 +140,8 @@ function createWindow() {
             backgroundThrottling: false,
         },
         frame: false,
-        transparent: true,
+        transparent: useTransparentWindow,
+        backgroundColor: '#121212',
         icon: path.join(__dirname, '../build/icon.png'),
         show: false,
     });
@@ -78,7 +154,15 @@ function createWindow() {
     }
 
     mainWindow.once('ready-to-show', () => {
-        mainWindow.show();
+        showMainWindow();
+    });
+
+    mainWindow.webContents.once('did-finish-load', () => {
+        setTimeout(() => {
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+                showMainWindow();
+            }
+        }, 250);
     });
 
     mainWindow.on('maximize', () => mainWindow.webContents.send('window-maximized', true));
@@ -110,6 +194,14 @@ function createWindow() {
     });
 
 
+}
+
+if (!hasSingleInstanceLock) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        showMainWindow();
+    });
 }
 
 app.on('before-quit', () => {
@@ -169,6 +261,18 @@ app.whenReady().then(async () => {
     createWindow();
     createTray();
     psbId = powerSaveBlocker.start('prevent-app-suspension');
+});
+
+app.on('activate', () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+        createWindow();
+        if (!tray || tray.isDestroyed?.()) {
+            createTray();
+        }
+        return;
+    }
+
+    showMainWindow();
 });
 
 let logLock = Promise.resolve();
@@ -352,9 +456,7 @@ ipcMain.on('flash-frame', (event, bool) => {
 
 ipcMain.on('force-restore', () => {
     if (mainWindow) {
-        mainWindow.restore();
-        mainWindow.show();
-        mainWindow.focus();
+        showMainWindow();
         mainWindow.setAlwaysOnTop(isStayOnTopGlobal, 'screen-saver', 1);
     }
 });
@@ -419,8 +521,7 @@ ipcMain.on('set-eclipse-level', (event, level) => {
 ipcMain.on('trigger-enforce', () => {
     isEnforced = true;
     if (mainWindow) {
-        mainWindow.show();
-        mainWindow.focus();
+        showMainWindow();
         mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
         mainWindow.setKiosk(enforcementConfig.kioskMode === true);
         if (process.platform === 'darwin') {
