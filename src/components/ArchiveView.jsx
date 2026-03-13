@@ -21,17 +21,6 @@ import {
   Skull,
 } from "lucide-react";
 
-const ProgressBar = ({ value, colorClass }) => (
-  <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-    <div
-      className={`h-full ${colorClass}`}
-      style={{
-        width: `${(value / 10) * 100}%`,
-      }}
-    ></div>
-  </div>
-);
-
 export const ArchiveView = ({
   archiveData,
   setArchiveData,
