@@ -2,6 +2,13 @@ const { app, BrowserWindow, ipcMain, screen, shell, dialog, Tray, Menu, powerSav
 const path = require('path');
 const fs = require('fs');
 const fsPromises = fs.promises;
+const {
+    isPlainObject,
+    isBoolean,
+    normalizeEnforcementConfig,
+    normalizeEclipseLevel,
+    isValidLogPayload,
+} = require('./validation');
 
 function exists(p) {
     return fsPromises.access(p).then(() => true).catch(() => false);
@@ -12,7 +19,7 @@ let tray;
 let isQuitting = false;
 let isEnforced = false;
 let psbId;
-let enforcementConfig = {};
+let enforcementConfig = normalizeEnforcementConfig();
 let eclipseWindows = [];
 let isStayOnTopGlobal = false;
 
@@ -80,7 +87,13 @@ function createWindow() {
     mainWindow.on('close', (event) => {
         if (!isQuitting) {
             event.preventDefault();
-            mainWindow.hide();
+            if (isEnforced) {
+                mainWindow.show();
+                mainWindow.focus();
+                mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+            } else {
+                mainWindow.hide();
+            }
         }
         return false;
     });
@@ -101,16 +114,22 @@ function createWindow() {
 
 app.on('before-quit', () => {
     isQuitting = true;
+
+    if (psbId && powerSaveBlocker.isStarted(psbId)) {
+        powerSaveBlocker.stop(psbId);
+    }
 });
 
 const getLogPath = (customPath) => {
     const defaultPath = path.join(app.getPath('userData'), 'time_master_logs.json');
     if (customPath && typeof customPath === 'string' && customPath.trim() !== '') {
-        if (allowedPaths.has(customPath)) {
-            return customPath;
+        const normalizedPath = path.normalize(customPath.trim());
+
+        if (allowedPaths.has(normalizedPath)) {
+            return normalizedPath;
         }
+
         try {
-            const normalizedPath = path.normalize(customPath.trim());
             // Ensure path is an absolute path and resolves inside userData folder to prevent arbitrary directory opening
             if (path.isAbsolute(normalizedPath) && normalizedPath.endsWith('.json')) {
                 const targetDir = path.dirname(normalizedPath);
@@ -137,7 +156,10 @@ app.whenReady().then(async () => {
             const data = await fsPromises.readFile(allowedPathsFile, 'utf8');
             const paths = JSON.parse(data);
             if (Array.isArray(paths)) {
-                paths.forEach(p => allowedPaths.add(p));
+                paths
+                    .filter(p => typeof p === 'string' && p.trim() !== '')
+                    .map(p => path.normalize(p))
+                    .forEach(p => allowedPaths.add(p));
             }
         }
     } catch (e) {
@@ -154,6 +176,11 @@ const getLocalDateKey = (date) => new Date(date.getTime() - date.getTimezoneOffs
 
 ipcMain.on('save-log', (event, data, customPath) => {
     logLock = logLock.then(async () => {
+        if (!isPlainObject(data)) {
+            console.error('Rejected invalid log payload from renderer.');
+            return;
+        }
+
         const timestamp = new Date();
         const dateKey = getLocalDateKey(timestamp);
         const filePath = getLogPath(customPath);
@@ -213,7 +240,14 @@ ipcMain.handle('get-logs', async (event, customPath) => {
     const filePath = getLogPath(customPath);
     try {
         const content = await fsPromises.readFile(filePath, 'utf8');
-        return JSON.parse(content);
+        const parsed = JSON.parse(content);
+
+        if (!isValidLogPayload(parsed)) {
+            console.error('Invalid log payload structure loaded from disk.');
+            return {};
+        }
+
+        return parsed;
     } catch (e) {
         if (e.code !== 'ENOENT') {
             console.error("Failed to get logs:", e);
@@ -225,6 +259,12 @@ ipcMain.handle('get-logs', async (event, customPath) => {
 ipcMain.handle('update-logs', async (event, updatedLogs, customPath) => {
     return new Promise((resolve) => {
         logLock = logLock.then(async () => {
+            if (!isValidLogPayload(updatedLogs)) {
+                console.error('Rejected invalid archive update payload from renderer.');
+                resolve(false);
+                return;
+            }
+
             const filePath = getLogPath(customPath);
             try {
                 const dir = path.dirname(filePath);
@@ -246,7 +286,7 @@ ipcMain.handle('select-log-file', async () => {
         properties: ['openFile', 'promptToCreate']
     });
     if (!result.canceled && result.filePaths.length > 0) {
-        const selectedPath = result.filePaths[0];
+        const selectedPath = path.normalize(result.filePaths[0]);
         allowedPaths.add(selectedPath);
         try {
             await fsPromises.writeFile(allowedPathsFile, JSON.stringify([...allowedPaths], null, 2));
@@ -272,9 +312,17 @@ ipcMain.on('maximize-app', () => {
     }
 });
 
-ipcMain.on('close-app', () => mainWindow.hide());
+ipcMain.on('close-app', () => {
+    if (mainWindow && !isEnforced) {
+        mainWindow.hide();
+    }
+});
 
 ipcMain.on('set-stay-on-top', (event, bool) => {
+    if (!isBoolean(bool)) {
+        return;
+    }
+
     isStayOnTopGlobal = bool;
     if (mainWindow) {
         mainWindow.setAlwaysOnTop(bool, 'screen-saver', 1);
@@ -282,6 +330,10 @@ ipcMain.on('set-stay-on-top', (event, bool) => {
 });
 
 ipcMain.on('set-kiosk', (event, bool) => {
+    if (!isBoolean(bool)) {
+        return;
+    }
+
     if (mainWindow) {
         mainWindow.setKiosk(bool);
         mainWindow.setSkipTaskbar(bool);
@@ -289,6 +341,10 @@ ipcMain.on('set-kiosk', (event, bool) => {
 });
 
 ipcMain.on('flash-frame', (event, bool) => {
+    if (!isBoolean(bool)) {
+        return;
+    }
+
     if (mainWindow) {
         mainWindow.flashFrame(bool);
     }
@@ -299,7 +355,7 @@ ipcMain.on('force-restore', () => {
         mainWindow.restore();
         mainWindow.show();
         mainWindow.focus();
-        mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+        mainWindow.setAlwaysOnTop(isStayOnTopGlobal, 'screen-saver', 1);
     }
 });
 
@@ -315,11 +371,13 @@ ipcMain.on('open-logs-folder', async (event, customPath) => {
 });
 
 ipcMain.on('set-enforcement', (event, config) => {
-    enforcementConfig = config || {};
+    enforcementConfig = normalizeEnforcementConfig(config);
 });
 
 ipcMain.on('set-eclipse-level', (event, level) => {
-    if (!isEnforced || !enforcementConfig.desktopEclipse || level === 0) {
+    const normalizedLevel = normalizeEclipseLevel(level);
+
+    if (!isEnforced || !enforcementConfig.desktopEclipse || normalizedLevel === 0) {
         closeEclipseWindows();
         return;
     }
@@ -343,15 +401,14 @@ ipcMain.on('set-eclipse-level', (event, level) => {
             });
             win.setIgnoreMouseEvents(true, { forward: true });
             win.setAlwaysOnTop(true, 'screen-saver', 0);
-            const html = encodeURIComponent('<body style="background:black; margin:0; padding:0; overflow:hidden;"></body>');
-            win.loadURL(`data:text/html;charset=utf-8,${html}`);
+            win.loadFile(path.join(__dirname, 'eclipse.html'));
             win.setOpacity(0);
             win.once('ready-to-show', () => win.show());
             eclipseWindows.push(win);
         });
     }
 
-    const targetOpacity = Math.min(0.95, level * 0.1);
+    const targetOpacity = Math.min(0.95, normalizedLevel * 0.1);
     eclipseWindows.forEach(win => {
         if (!win.isDestroyed()) {
             win.setOpacity(targetOpacity);
@@ -364,11 +421,8 @@ ipcMain.on('trigger-enforce', () => {
     if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
-        if (isStayOnTopGlobal) {
-            mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
-        } else {
-            mainWindow.setAlwaysOnTop(false);
-        }
+        mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
+        mainWindow.setKiosk(enforcementConfig.kioskMode === true);
         if (process.platform === 'darwin') {
             mainWindow.setVisibleOnAllWorkspaces(true);
         }

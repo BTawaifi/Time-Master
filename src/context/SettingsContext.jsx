@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { DEFAULT_SETTINGS } from '../constants';
+import { THEMES } from '../constants';
+import { normalizeSettings } from '../settingsValidation.mjs';
 
 const SettingsContext = createContext(null);
 
@@ -9,23 +11,11 @@ export const SettingsProvider = ({ children }) => {
             const stored = localStorage.getItem('time_master_settings');
             if (!stored) return DEFAULT_SETTINGS;
             const parsed = JSON.parse(stored);
-
-            const reminders = { ...DEFAULT_SETTINGS.reminders };
-            if (parsed.reminders) {
-                Object.keys(reminders).forEach(key => {
-                    if (parsed.reminders[key]) reminders[key] = { ...reminders[key], ...parsed.reminders[key] };
-                });
-            }
-
-            const enforcement = { ...DEFAULT_SETTINGS.enforcement, ...(parsed.enforcement || {}) };
-
-            return {
-                ...DEFAULT_SETTINGS,
-                ...parsed,
-                customTheme: { ...DEFAULT_SETTINGS.customTheme, ...(parsed.customTheme || {}) },
-                reminders,
-                enforcement
-            };
+            return normalizeSettings(
+                parsed,
+                DEFAULT_SETTINGS,
+                THEMES.map(theme => theme.id),
+            );
         } catch (e) {
             console.error("Failed to parse settings from localStorage:", e);
             return DEFAULT_SETTINGS;
@@ -33,7 +23,11 @@ export const SettingsProvider = ({ children }) => {
     });
 
     useEffect(() => {
-        localStorage.setItem('time_master_settings', JSON.stringify(settings));
+        try {
+            localStorage.setItem('time_master_settings', JSON.stringify(settings));
+        } catch (e) {
+            console.error('Failed to persist settings to localStorage:', e);
+        }
     }, [settings]);
 
     return (

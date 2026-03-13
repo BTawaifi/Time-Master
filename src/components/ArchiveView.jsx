@@ -36,6 +36,7 @@ export const ArchiveView = ({
   const [editingId, setEditingId] = useState(null);
   const [expandedIds, setExpandedIds] = useState([]);
   const [editFields, setEditFields] = useState({});
+  const [archiveError, setArchiveError] = useState("");
 
   const expandedIdsSet = useMemo(() => new Set(expandedIds), [expandedIds]);
 
@@ -66,11 +67,44 @@ export const ArchiveView = ({
     return visible;
   }, [archiveData, sortedDates, startDate, endDate]);
 
+  const persistArchiveData = useCallback(
+    async (nextData, onSuccess) => {
+      setArchiveError("");
+
+      try {
+        if (!window.electron?.updateLogs) {
+          throw new Error("Archive persistence is unavailable.");
+        }
+
+        const didPersist = await window.electron.updateLogs(
+          nextData,
+          settings.logFilePath,
+        );
+
+        if (!didPersist) {
+          throw new Error("Archive write failed.");
+        }
+
+        setArchiveData(nextData);
+        onSuccess?.();
+        return true;
+      } catch (error) {
+        console.error("Failed to persist archive changes:", error);
+        setArchiveError(
+          "Could not save archive changes. Your history file was not updated.",
+        );
+        return false;
+      }
+    },
+    [setArchiveData, settings.logFilePath],
+  );
+
   return (
     <div className="max-w-5xl mx-auto space-y-10">
       <header className="flex items-center justify-between flex-wrap gap-8 border-b border-white/5 pb-8">
         <button
           onClick={() => {
+            setArchiveError("");
             setShowArchives(false);
             setEditingId(null);
             setExpandedIds([]);
@@ -106,6 +140,11 @@ export const ArchiveView = ({
           </button>
         </div>
       </header>
+      {archiveError && (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">
+          {archiveError}
+        </div>
+      )}
       <div className="space-y-6">
         {logs.length === 0 ? (
           <div className="glass-card p-32 text-center opacity-20 italic flex flex-col items-center gap-4">
@@ -205,12 +244,9 @@ export const ArchiveView = ({
                               nd[log.date] = nd[log.date].map((l) =>
                                 l.id === editingId ? editFields : l,
                               );
-                              await window.electron.updateLogs(
-                                nd,
-                                settings.logFilePath,
-                              );
-                              setArchiveData(nd);
-                              setEditingId(null);
+                              await persistArchiveData(nd, () => {
+                                setEditingId(null);
+                              });
                             }}
                             className="p-1.5 bg-green-500/20 text-main rounded-md"
                           >
@@ -231,6 +267,7 @@ export const ArchiveView = ({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              setArchiveError("");
                               setEditingId(log.id);
                               setEditFields(log);
                             }}
@@ -248,11 +285,7 @@ export const ArchiveView = ({
                               );
                               if (nd[log.date].length === 0)
                                 delete nd[log.date];
-                              await window.electron.updateLogs(
-                                nd,
-                                settings.logFilePath,
-                              );
-                              setArchiveData(nd);
+                              await persistArchiveData(nd);
                             }}
                             className="p-2 bg-red-500/5 text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20"
                           >

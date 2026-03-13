@@ -1,5 +1,18 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
+function subscribe(channel, callback) {
+  if (typeof callback !== 'function') {
+    return () => {}
+  }
+
+  const listener = (_event, ...args) => callback(...args)
+  ipcRenderer.on(channel, listener)
+
+  return () => {
+    ipcRenderer.removeListener(channel, listener)
+  }
+}
+
 contextBridge.exposeInMainWorld('electron', {
   saveLog: (data, customPath) => ipcRenderer.send('save-log', data, customPath),
   getLogs: (customPath) => ipcRenderer.invoke('get-logs', customPath),
@@ -17,6 +30,6 @@ contextBridge.exposeInMainWorld('electron', {
   flashFrame: (bool) => ipcRenderer.send('flash-frame', bool),
   cancelEnforce: () => ipcRenderer.send('cancel-enforce'),
   openLogsFolder: (customPath) => ipcRenderer.send('open-logs-folder', customPath),
-  onMaximized: (callback) => ipcRenderer.on('window-maximized', (event, state) => callback(state)),
-  onEnforce: (callback) => ipcRenderer.on('enforce-mode', (event, ...args) => callback(...args))
+  onMaximized: (callback) => subscribe('window-maximized', callback),
+  onEnforce: (callback) => subscribe('enforce-mode', callback)
 })

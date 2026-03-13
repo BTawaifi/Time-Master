@@ -75,7 +75,43 @@ export const SessionReviewView = ({
         </div>
         <div className="glass-card p-6 border border-white/10">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">
-            3. Hypothesis Validation
+            3. Method or Tool
+          </label>
+          <input
+            type="text"
+            value={formData.method}
+            onChange={(e) =>
+              setFormData((prev) => ({ ...prev, method: e.target.value }))
+            }
+            placeholder="Which method or tool did you use?"
+            className="input-field"
+          />
+        </div>
+        <div className="glass-card p-6 border border-white/10">
+          <label className="block text-xs font-bold accent-text mb-3 uppercase tracking-wider">
+            4. Uncertainty Trend
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ["decreased", "Down"],
+              ["stable", "Stable"],
+              ["increased", "Up"],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() =>
+                  setFormData((prev) => ({ ...prev, uncertainty: value }))
+                }
+                className={`py-3 rounded-xl border text-xs font-black uppercase transition-all ${formData.uncertainty === value ? "accent-bg accent-contrast-text border-transparent" : "bg-transparent border-white/10 opacity-50 hover:opacity-100"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="glass-card p-6 border border-white/10">
+          <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">
+            5. Hypothesis Validation
           </label>
           <div className="flex gap-4 mb-4">
             <button
@@ -111,7 +147,7 @@ export const SessionReviewView = ({
 
         <div className="glass-card p-6 border border-white/10">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">
-            4. Resistance & Friction
+            6. Resistance & Friction
           </label>
           <textarea
             value={formData.friction}
@@ -195,7 +231,7 @@ export const SessionReviewView = ({
         </div>
         <div className="glass-card p-6 md:col-span-2 border border-white/10">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider flex items-center gap-1">
-            5. Next Strategic Task <span className="text-red-500">*</span>
+            7. Next Strategic Task <span className="text-red-500">*</span>
           </label>
           <div className="flex items-center gap-3">
             <ArrowRight size={20} className="accent-text" />
@@ -212,7 +248,7 @@ export const SessionReviewView = ({
         </div>
         <div className="glass-card p-6 md:col-span-2 bg-yellow-400/5 border-yellow-400/20">
           <label className="block text-xs font-bold text-yellow-500 mb-2 uppercase tracking-wider">
-            <Zap size={14} className="inline mr-1" /> 6. Immediate Momentum
+            <Zap size={14} className="inline mr-1" /> 8. Immediate Momentum
             Catalyst (Do it now)
           </label>
           <div className="flex items-center gap-3">
