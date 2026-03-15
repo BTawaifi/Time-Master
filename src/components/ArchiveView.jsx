@@ -109,7 +109,7 @@ export const ArchiveView = ({
             setArchiveError("");
             setShowArchives(false);
             setEditingId(null);
-            setExpandedIds([]);
+            setExpandedIds(new Set());
           }}
           className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all accent-text"
         >
