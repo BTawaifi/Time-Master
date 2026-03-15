@@ -147,9 +147,9 @@ function App() {
             return undefined;
         }
 
-        const volume = Math.min(0.7, 0.05 + enforcementLevel * 0.06);
-        const freq = Math.min(1400, 300 + enforcementLevel * 80);
-        const dur = Math.min(1.0, 0.15 + enforcementLevel * 0.05);
+        const volume = 0.05 + enforcementLevel * 0.06;
+        const freq = 300 + enforcementLevel * 80;
+        const dur = 0.15 + enforcementLevel * 0.05;
         let audioCtx;
         let osc;
         let gain;
@@ -184,7 +184,17 @@ function App() {
             gain = audioCtx.createGain();
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            osc.type = enforcementLevel > 5 ? 'sawtooth' : 'triangle';
+
+            if (enforcementLevel < 4) {
+                osc.type = 'sine';
+            } else if (enforcementLevel < 8) {
+                osc.type = 'triangle';
+            } else if (enforcementLevel < 12) {
+                osc.type = 'square';
+            } else {
+                osc.type = 'sawtooth';
+            }
+
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gain.gain.setValueAtTime(0, audioCtx.currentTime);
             gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + 0.05);
