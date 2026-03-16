@@ -34,20 +34,22 @@ export const ArchiveView = ({
     new Date().toISOString().split("T")[0],
   );
   const [editingId, setEditingId] = useState(null);
-  const [expandedIds, setExpandedIds] = useState([]);
+  const [expandedIds, setExpandedIds] = useState(() => new Set());
   const [editFields, setEditFields] = useState({});
   const [archiveError, setArchiveError] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const expandedIdsSet = useMemo(() => new Set(expandedIds), [expandedIds]);
-
-  const toggleExpand = useCallback(
-    (id) =>
-      setExpandedIds((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
-      ),
-    [],
-  );
+  const toggleExpand = useCallback((id) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   const sortedDates = useMemo(() => {
     return Object.keys(archiveData).sort((a, b) => b.localeCompare(a));
@@ -108,7 +110,7 @@ export const ArchiveView = ({
             setArchiveError("");
             setShowArchives(false);
             setEditingId(null);
-            setExpandedIds([]);
+            setExpandedIds(new Set());
           }}
           className="flex items-center gap-2 text-sm font-bold opacity-40 hover:opacity-100 transition-all accent-text"
         >
@@ -156,7 +158,7 @@ export const ArchiveView = ({
         ) : (
           logs.map((log) => {
             const isExpanded =
-              expandedIdsSet.has(log.id) || editingId === log.id;
+              expandedIds.has(log.id) || editingId === log.id;
             const won =
               editingId === log.id
                 ? editFields.hypothesisValid
