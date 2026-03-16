@@ -1,5 +1,6 @@
 const REMINDER_MODES = new Set(['stochastic', 'presets']);
 const OSC_TYPES = new Set(['sine', 'triangle', 'square', 'sawtooth']);
+const SESSION_MODES = new Set(['deepWork', 'pomodoro', 'latencyBlocks']);
 
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const asBoolean = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
@@ -42,6 +43,22 @@ const normalizeTheme = (theme, fallback) => {
   }, {});
 };
 
+const normalizeSessionMode = (parsed, fallback) => {
+  if (SESSION_MODES.has(parsed.sessionMode)) {
+    return parsed.sessionMode;
+  }
+
+  if (parsed.latencyBlocks === true) {
+    return 'latencyBlocks';
+  }
+
+  if (parsed.pomodoroOnly === true) {
+    return 'pomodoro';
+  }
+
+  return fallback;
+};
+
 export const normalizeSettings = (parsed, defaults, themeIds = []) => {
   if (!isPlainObject(parsed)) {
     return defaults;
@@ -63,7 +80,7 @@ export const normalizeSettings = (parsed, defaults, themeIds = []) => {
     themeId: validThemeIds.has(parsed.themeId) ? parsed.themeId : defaults.themeId,
     autoMinimize: asBoolean(parsed.autoMinimize, defaults.autoMinimize),
     stayOnTop: asBoolean(parsed.stayOnTop, defaults.stayOnTop),
-    pomodoroOnly: asBoolean(parsed.pomodoroOnly, defaults.pomodoroOnly),
+    sessionMode: normalizeSessionMode(parsed, defaults.sessionMode),
     timerDuration: Math.round(asNumberInRange(parsed.timerDuration, defaults.timerDuration, 60, 86400)),
     restDuration: Math.round(asNumberInRange(parsed.restDuration, defaults.restDuration, 60, 86400)),
     logFilePath: asString(parsed.logFilePath, defaults.logFilePath),

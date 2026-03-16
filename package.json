@@ -4,7 +4,7 @@
   "description": "",
   "main": "electron/main.js",
   "scripts": {
-    "start": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "start": "concurrently \"vite --port 5174\" \"wait-on tcp:5174 && electron .\"",
     "build": "vite build",
     "compile": "npm run build && electron-builder",
     "test": "node --experimental-test-coverage --test src/__tests__/*.test.mjs"

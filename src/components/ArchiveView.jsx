@@ -19,7 +19,15 @@ import {
   Flag,
   Zap,
   Skull,
+  Workflow,
+  Layers,
 } from "lucide-react";
+import {
+  getSessionModeLabel,
+  getSessionStateDetails,
+  getSessionStateSummary,
+  getSessionLatencyHistory,
+} from "../sessionArchive.mjs";
 
 export const ArchiveView = ({
   archiveData,
@@ -38,6 +46,7 @@ export const ArchiveView = ({
   const [editFields, setEditFields] = useState({});
   const [archiveError, setArchiveError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -163,6 +172,9 @@ export const ArchiveView = ({
               editingId === log.id
                 ? editFields.hypothesisValid
                 : log.hypothesisValid;
+            const sessionModeLabel = getSessionModeLabel(log.sessionMode);
+            const sessionSummary = getSessionStateSummary(log);
+            const sessionDetails = getSessionStateDetails(log);
             return (
               <div
                 key={log.id}
@@ -234,6 +246,9 @@ export const ArchiveView = ({
                             <Battery size={10} className="text-yellow-400" />{" "}
                             {log.energyLevel} Energy
                           </div>
+                          <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                            <Flag size={10} className="accent-text" /> {sessionModeLabel}: {sessionSummary}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -283,18 +298,28 @@ export const ArchiveView = ({
                           <button
                             onClick={async (e) => {
                               e.stopPropagation();
-                              if (!confirm("Purge Session Record?")) return;
-                              const nd = { ...archiveData };
-                              nd[log.date] = nd[log.date].filter(
-                                (l) => l.id !== log.id,
-                              );
-                              if (nd[log.date].length === 0)
-                                delete nd[log.date];
-                              await persistArchiveData(nd);
+                              if (confirmDeleteId === log.id) {
+                                // Second click — execute purge
+                                const nd = { ...archiveData };
+                                nd[log.date] = nd[log.date].filter(
+                                  (l) => l.id !== log.id,
+                                );
+                                if (nd[log.date].length === 0)
+                                  delete nd[log.date];
+                                setConfirmDeleteId(null);
+                                await persistArchiveData(nd);
+                              } else {
+                                // First click — arm confirmation
+                                setConfirmDeleteId(log.id);
+                              }
                             }}
-                            className="p-2 bg-red-500/5 text-red-400 rounded-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-500/20"
+                            onBlur={() => setConfirmDeleteId(null)}
+                            className={`p-2 rounded-lg transition-all flex items-center gap-1.5 ${confirmDeleteId === log.id ? "bg-red-500/30 text-red-300 opacity-100 border border-red-500/40 scale-105" : "bg-red-500/5 text-red-400 opacity-0 group-hover:opacity-100 hover:bg-red-500/20"}`}
                           >
-                            <Trash2 size={16} />
+                            <Trash2 size={14} />
+                            {confirmDeleteId === log.id && (
+                              <span className="text-[9px] font-black uppercase tracking-widest animate-in fade-in duration-200">Confirm?</span>
+                            )}
                           </button>
                         </>
                       )}
@@ -376,7 +401,23 @@ export const ArchiveView = ({
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                      <div className="glass-card p-6 border-white/5 space-y-4">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                          <Flag size={14} /> Session Engine
+                        </div>
+                        <div className="space-y-3">
+                          <div className="text-sm font-bold accent-text">
+                            {sessionModeLabel}
+                          </div>
+                          {sessionDetails.map(([label, value]) => (
+                            <div key={label} className="flex items-center justify-between gap-3 text-[11px]">
+                              <span className="opacity-40 uppercase tracking-wide">{label}</span>
+                              <span className="text-right data-text">{value}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                       <div className="glass-card p-6 border-white/5 space-y-4">
                         <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
                           <BrainCircuit size={14} /> Metrics
@@ -512,6 +553,41 @@ export const ArchiveView = ({
                         </div>
                       </div>
                     </div>
+                    {log.sessionMode === "latencyBlocks" && (
+                      <div className="glass-card p-6 border-white/5 space-y-6">
+                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                          <Workflow size={14} className="accent-text" /> Multi-Stream Ledger Trace
+                        </div>
+                        <div className="space-y-8">
+                          {Object.values(log.sessionState.ledger?.streams || {}).map((stream) => (
+                            <div key={stream.id} className="space-y-4">
+                              <div className="flex items-center gap-3">
+                                <Layers size={14} className="accent-text" />
+                                <span className="text-xs font-black uppercase tracking-widest">{stream.name}</span>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {stream.history.map((entry, index) => (
+                                  <div key={index} className="flex flex-col gap-2 bg-black/20 border border-white/5 p-4 rounded-xl transition-all hover:border-accent-color/20">
+                                    <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
+                                      <span className="opacity-40">{entry.block}</span>
+                                      <div className="flex items-center gap-2">
+                                        <span className="accent-text">{entry.duration}s</span>
+                                        <span className="opacity-80">{entry.label}</span>
+                                      </div>
+                                    </div>
+                                    {entry.comment && (
+                                      <div className="text-[11px] italic opacity-60 pl-2 border-l border-accent-color/30 leading-relaxed">
+                                        "{entry.comment}"
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/5">
                       <div className="flex items-start gap-4">
                         <Flag size={18} className="accent-text mt-1 shrink-0" />

@@ -12,25 +12,32 @@ import {
   SkipForward,
 } from "lucide-react";
 import { MantraGate } from "./MantraGate";
+import { getSessionReviewMeta } from "../sessionReview.mjs";
 
 export const SessionReviewView = ({
   formData,
   setFormData,
   settings,
+  isEnforcedReview,
   handleAuthorization,
   handleSkip,
 }) => {
+  const reviewMeta = getSessionReviewMeta({
+    sessionMode: settings.sessionMode,
+    isEnforcedReview,
+  });
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-24 text-main">
       <header className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold accent-text uppercase tracking-tight">
-            <ClipboardCheck size={24} /> Session Review
+            <ClipboardCheck size={24} /> {reviewMeta.title}
           </h1>
-          <p className="opacity-40 text-sm mt-1">Check your progress.</p>
+          <p className="opacity-40 text-sm mt-1">{reviewMeta.description}</p>
         </div>
-        <div className="px-3 py-1 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-full flex items-center gap-1 animate-pulse font-bold text-main">
-          <AlertCircle size={12} /> STAY FOCUSED
+        <div className={`px-3 py-1 border text-xs rounded-full flex items-center gap-1 font-bold ${reviewMeta.badgeClassName}`}>
+          <AlertCircle size={12} /> {reviewMeta.badgeText}
         </div>
       </header>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -266,7 +273,7 @@ export const SessionReviewView = ({
         </div>
       </div>
       <div className="fixed bottom-0 left-0 w-full p-6 bg-transparent backdrop-blur-3xl border-t border-white/5 flex flex-col sm:flex-row gap-4 justify-center z-50">
-        {settings.enforcement?.mantraGate && !formData.unlocked ? (
+        {isEnforcedReview && settings.enforcement?.mantraGate && !formData.unlocked ? (
           <div className="w-full max-w-lg">
             <MantraGate
               goal={formData.bet}
@@ -295,7 +302,7 @@ export const SessionReviewView = ({
             >
               <Compass size={20} /> Save & Modify
             </button>
-            {!settings.enforcement?.kioskMode && (
+            {(!isEnforcedReview || !settings.enforcement?.kioskMode) && (
               <button
                 onClick={handleSkip}
                 className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2 border border-red-500/20 text-main"
