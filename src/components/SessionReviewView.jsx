@@ -28,8 +28,9 @@ export const SessionReviewView = ({
   });
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-24 text-main">
-      <header className="flex items-center justify-between mb-8">
+    <main className="flex-1 w-full overflow-y-auto pt-8 px-6 no-scrollbar">
+      <div className="max-w-4xl mx-auto space-y-8 pb-32 text-main">
+        <header className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold accent-text uppercase tracking-tight">
             <ClipboardCheck size={24} /> {reviewMeta.title}
@@ -41,7 +42,7 @@ export const SessionReviewView = ({
         </div>
       </header>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card p-6 md:col-span-2 border border-white/10 bg-white/5">
+        <div className="glass-card p-6 md:col-span-2 border border-app-border bg-app-tintLow">
           <label className="block text-xs font-bold accent-text mb-2 uppercase opacity-60">
             My Goal
           </label>
@@ -51,10 +52,10 @@ export const SessionReviewView = ({
               setFormData((prev) => ({ ...prev, bet: e.target.value }))
             }
             placeholder="What high-leverage outcome did you bet on?"
-            className="input-field h-24 resize-none bg-black/20 border-white/5 focus:border-accent-color/30 italic text-lg"
+            className="input-field h-24 resize-none bg-app-tintMed border-app-border focus:border-accent-color/30 italic text-lg text-main"
           />
         </div>
-        <div className="glass-card p-6 border border-white/10">
+        <div className="glass-card p-6 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider flex items-center gap-1">
             1. Activity Description <span className="text-red-500">*</span>
           </label>
@@ -67,7 +68,7 @@ export const SessionReviewView = ({
             className="input-field h-32 resize-none"
           />
         </div>
-        <div className="glass-card p-6 border border-white/10">
+        <div className="glass-card p-6 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider flex items-center gap-1">
             2. Tangible Output <span className="text-red-500">*</span>
           </label>
@@ -80,7 +81,7 @@ export const SessionReviewView = ({
             className="input-field h-32 resize-none"
           />
         </div>
-        <div className="glass-card p-6 border border-white/10">
+        <div className="glass-card p-6 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">
             3. Method or Tool
           </label>
@@ -94,7 +95,7 @@ export const SessionReviewView = ({
             className="input-field"
           />
         </div>
-        <div className="glass-card p-6 border border-white/10">
+        <div className="glass-card p-6 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-3 uppercase tracking-wider">
             4. Uncertainty Trend
           </label>
@@ -109,14 +110,14 @@ export const SessionReviewView = ({
                 onClick={() =>
                   setFormData((prev) => ({ ...prev, uncertainty: value }))
                 }
-                className={`py-3 rounded-xl border text-xs font-black uppercase transition-all ${formData.uncertainty === value ? "accent-bg accent-contrast-text border-transparent" : "bg-transparent border-white/10 opacity-50 hover:opacity-100"}`}
+                className={`py-3 rounded-xl border text-xs font-black uppercase transition-all ${formData.uncertainty === value ? "accent-bg accent-contrast-text border-transparent" : "bg-transparent border-app-border opacity-50 hover:opacity-100"}`}
               >
                 {label}
               </button>
             ))}
           </div>
         </div>
-        <div className="glass-card p-6 border border-white/10">
+        <div className="glass-card p-6 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">
             5. Hypothesis Validation
           </label>
@@ -125,7 +126,7 @@ export const SessionReviewView = ({
               onClick={() =>
                 setFormData({ ...formData, hypothesisValid: true })
               }
-              className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === true ? "bg-green-500/20 border-green-500 text-green-400" : "bg-transparent border-white/10 opacity-30"}`}
+              className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === true ? "bg-green-500/20 border-green-500 text-green-400" : "bg-transparent border-app-border opacity-30"}`}
             >
               YES
             </button>
@@ -133,7 +134,7 @@ export const SessionReviewView = ({
               onClick={() =>
                 setFormData({ ...formData, hypothesisValid: false })
               }
-              className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === false ? "bg-red-500/20 border-red-500 text-red-400" : "bg-transparent border-white/10 opacity-30"}`}
+              className={`flex-1 py-3 rounded-xl border text-sm font-black transition-all ${formData.hypothesisValid === false ? "bg-red-500/20 border-red-500 text-red-400" : "bg-transparent border-app-border opacity-30"}`}
             >
               NO
             </button>
@@ -152,7 +153,7 @@ export const SessionReviewView = ({
           />
         </div>
 
-        <div className="glass-card p-6 border border-white/10">
+        <div className="glass-card p-6 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider">
             6. Resistance & Friction
           </label>
@@ -166,7 +167,7 @@ export const SessionReviewView = ({
           />
         </div>
         <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-card p-6 flex flex-col justify-center space-y-4 border border-white/10">
+          <div className="glass-card p-6 flex flex-col justify-center space-y-4 border border-app-border">
             <label className="block text-[10px] font-bold accent-text uppercase tracking-wider flex items-center gap-2">
               <Waves size={14} /> Focus Depth
             </label>
@@ -189,7 +190,7 @@ export const SessionReviewView = ({
               </div>
             </div>
           </div>
-          <div className="glass-card p-6 flex flex-col justify-center space-y-4 border border-white/10">
+          <div className="glass-card p-6 flex flex-col justify-center space-y-4 border border-app-border">
             <label className="block text-[10px] font-bold accent-text uppercase tracking-wider flex items-center gap-2">
               <Gem size={14} /> Session Value
             </label>
@@ -212,7 +213,7 @@ export const SessionReviewView = ({
               </div>
             </div>
           </div>
-          <div className="glass-card p-6 flex flex-col justify-center space-y-4 border border-white/10">
+          <div className="glass-card p-6 flex flex-col justify-center space-y-4 border border-app-border">
             <label className="block text-[10px] font-bold accent-text uppercase tracking-wider flex items-center gap-2">
               <Battery size={14} /> Mental Energy
             </label>
@@ -236,7 +237,7 @@ export const SessionReviewView = ({
             </div>
           </div>
         </div>
-        <div className="glass-card p-6 md:col-span-2 border border-white/10">
+        <div className="glass-card p-6 md:col-span-2 border border-app-border">
           <label className="block text-xs font-bold accent-text mb-2 uppercase tracking-wider flex items-center gap-1">
             7. Next Strategic Task <span className="text-red-500">*</span>
           </label>
@@ -272,7 +273,7 @@ export const SessionReviewView = ({
           </div>
         </div>
       </div>
-      <div className="fixed bottom-0 left-0 w-full p-6 bg-transparent backdrop-blur-3xl border-t border-white/5 flex flex-col sm:flex-row gap-4 justify-center z-50">
+      <div className="fixed bottom-0 left-0 w-full p-6 bg-transparent backdrop-blur-3xl border-t border-app-border flex flex-col sm:flex-row gap-4 justify-center z-50">
         {isEnforcedReview && settings.enforcement?.mantraGate && !formData.unlocked ? (
           <div className="w-full max-w-lg">
             <MantraGate
@@ -286,33 +287,38 @@ export const SessionReviewView = ({
           <>
             <button
               onClick={() => handleAuthorization(false)}
-              disabled={
-                !formData.activity || !formData.output || !formData.nextStep
-              }
-              className={`px-12 py-4 rounded-2xl font-black tracking-widest transition-all flex items-center justify-center gap-3 ${formData.activity && formData.output && formData.nextStep ? "accent-bg accent-contrast-text shadow-[0_0_40px_rgba(0,0,0,0.4)] scale-105 active:scale-95" : "bg-white/5 opacity-20 cursor-not-allowed"}`}
+              disabled={!formData.activity || !formData.output || !formData.nextStep}
+              className={`px-10 py-4 rounded-xl font-bold text-xs tracking-widest uppercase transition-all flex items-center justify-center gap-3 ${
+                formData.activity && formData.output && formData.nextStep
+                  ? "bg-app-primary text-app-primaryContrast shadow-neon-primary hover:shadow-[0_0_30px_rgba(99,102,241,0.6)]"
+                  : "bg-app-tintLow border border-app-border text-app-muted opacity-50 cursor-not-allowed"
+              }`}
             >
-              <RefreshCw size={20} /> Save & Continue
+              <i className="ph-bold ph-arrows-clockwise text-lg"></i> Save & Continue
             </button>
             <button
               onClick={() => handleAuthorization(true)}
-              disabled={
-                !formData.activity || !formData.output || !formData.nextStep
-              }
-              className={`px-12 py-4 rounded-2xl font-black tracking-widest transition-all flex items-center justify-center gap-3 border border-white/10 ${formData.activity && formData.output && formData.nextStep ? "bg-white/5 hover:bg-white/10 text-main" : "opacity-20 cursor-not-allowed"}`}
+              disabled={!formData.activity || !formData.output || !formData.nextStep}
+              className={`px-10 py-4 rounded-xl font-bold text-xs tracking-widest uppercase transition-all flex items-center justify-center gap-3 border ${
+                formData.activity && formData.output && formData.nextStep
+                  ? "bg-app-bg border-app-primary text-app-primary hover:bg-app-primary/10 shadow-[0_0_20px_rgba(99,102,241,0.2)]"
+                  : "border-app-border text-app-muted opacity-30 cursor-not-allowed"
+              }`}
             >
-              <Compass size={20} /> Save & Modify
+              <i className="ph-bold ph-compass text-lg"></i> Save & Modify
             </button>
             {(!isEnforcedReview || !settings.enforcement?.kioskMode) && (
               <button
                 onClick={handleSkip}
-                className="px-8 py-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-2xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2 border border-red-500/20 text-main"
+                className="px-8 py-4 rounded-xl border border-app-danger/30 hover:border-app-danger text-app-danger font-bold text-xs tracking-widest uppercase transition-all flex items-center justify-center gap-2 bg-app-danger/5 hover:bg-app-danger/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] shrink-0"
               >
-                <SkipForward size={18} /> Discard Session
+                <i className="ph-bold ph-trash text-lg"></i> Discard
               </button>
             )}
           </>
         )}
       </div>
     </div>
+    </main>
   );
 };

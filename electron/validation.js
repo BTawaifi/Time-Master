@@ -18,7 +18,13 @@ function isBoolean(value) {
 function normalizeEnforcementConfig(config) {
   const source = isPlainObject(config) ? config : {};
   return ENFORCEMENT_KEYS.reduce((normalized, key) => {
-    normalized[key] = source[key] === true;
+    if (Array.isArray(source[key])) {
+      normalized[key] = source[key].filter((x) => typeof x === 'string');
+    } else if (source[key] === true) {
+      normalized[key] = ['review'];
+    } else {
+      normalized[key] = [];
+    }
     return normalized;
   }, {});
 }

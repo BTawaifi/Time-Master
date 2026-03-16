@@ -12,20 +12,21 @@ test('session archive helpers summarize latency block sessions', () => {
     sessionMode: 'latencyBlocks',
     reviewSource: 'manual',
     sessionState: {
-      block: 'capture',
-      cycleCount: 3,
-      elapsedInBlock: 95,
+      totalSessionSeconds: 120,
+      ledger: {
+        streams: {
+          stream_1: { name: 'Alpha', links: [{ id: 'l1' }, { id: 'l2' }] },
+        }
+      }
     },
   };
 
-  assert.equal(getSessionModeLabel(log.sessionMode), 'Latency Blocks');
-  assert.equal(getSessionStateSummary(log), '3 cycles • Capture');
+  assert.equal(getSessionModeLabel(log.sessionMode), 'Neuro-Ledger');
+  assert.equal(getSessionStateSummary(log), '1 Streams • 2m');
   assert.deepEqual(getSessionStateDetails(log), [
-    ['Current block', 'Capture'],
-    ['Completed cycles', '3'],
-    ['Total session time', '0s'],
-    ['Elapsed in block', '1m'],
-    ['Review path', 'Manual'],
+    ['Streams', '1'],
+    ['Total Time', '2m'],
+    ['Stream: Alpha', '2 links']
   ]);
 });
 
