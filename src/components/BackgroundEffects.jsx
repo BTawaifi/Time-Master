@@ -6,6 +6,9 @@ export const BackgroundEffects = ({ effectId, isAlerting }) => {
     // Render the selected effect
     switch (effectId) {
         case "none":
+            return null;
+
+        case "segmentedGrid":
             return (
                 <div className={`absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-visible z-0 opacity-20 ${alertClass}`}>
                     <div className="grid grid-cols-4 grid-rows-4 gap-2 w-[400px] h-[400px]">
@@ -76,16 +79,6 @@ export const BackgroundEffects = ({ effectId, isAlerting }) => {
                 </div>
             );
 
-        case "plasmaField":
-            return (
-                <div className={`absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-visible z-0 opacity-20 ${alertClass}`}>
-                    <svg className="w-[800px] h-[800px] animate-[rotate-slow_15s_linear_infinite]" viewBox="0 0 100 100" style={{ transformOrigin: '50% 50%' }}>
-                        <polygon points="10,90 95,85 75,10" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-app-primary/30" strokeDasharray="5 5" />
-                        <polygon points="5,85 85,95 65,5" fill="none" stroke="currentColor" strokeWidth="0.3" className="text-app-success/20 animate-[pulse-transform_5s_ease-in-out_infinite]" style={{ transformOrigin: '50% 50%' }} />
-                    </svg>
-                    <div className="absolute w-[400px] h-[400px] bg-gradient-to-tr from-app-primary/10 to-transparent blur-[60px] animate-[pulse-transform_10s_ease-in-out_infinite_alternate]" style={{ borderRadius: '70% 30% 30% 70% / 60% 40% 60% 40%' }}></div>
-                </div>
-            );
 
         case "neonWeb":
             return (

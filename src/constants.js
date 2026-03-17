@@ -213,7 +213,8 @@ export const LATENCY_BLOCKS = [
 ];
 
 export const BACKGROUND_EFFECTS = [
-  { id: "none", name: "Segmented Grid" },
+  { id: "none", name: "None" },
+  { id: "segmentedGrid", name: "Segmented Grid" },
   { id: "neuralTracer", name: "Neural Tracer Lattice" },
   { id: "fluidAura", name: "Fluid Aura" },
   { id: "orbitNodes", name: "Orbital Nodes" },
@@ -221,7 +222,6 @@ export const BACKGROUND_EFFECTS = [
   { id: "sonarPing", name: "Sonar Radar" },
   { id: "cyberGrid", name: "Cyberpunk Grid" },
   { id: "waveRipple", name: "Wave Ripples" },
-  { id: "plasmaField", name: "Asymmetric Polygon" },
   { id: "neonWeb", name: "Neon Web" },
   { id: "chronosDial", name: "Chronos Dial" },
   { id: "auroraBorealis", name: "Nested Squares" },
@@ -237,7 +237,7 @@ export const BACKGROUND_EFFECTS = [
 
 export const DEFAULT_SETTINGS = {
   themeId: "enforcer",
-  bgEffect: "neuralTracer",
+  bgEffect: "none",
   autoMinimize: true,
   stayOnTop: false,
   sessionMode: "deepWork",
