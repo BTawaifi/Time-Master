@@ -13,8 +13,11 @@ import {
   Sliders,
   AlertCircle,
   Settings2,
+  Workflow,
+  Clock3,
+  TimerReset,
 } from "lucide-react";
-import { THEMES } from "../constants";
+import { SESSION_MODES, THEMES } from "../constants";
 
 export const SettingsModal = ({
   settings,
@@ -57,6 +60,47 @@ export const SettingsModal = ({
         {settingsTab === "system" ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 animate-in fade-in slide-in-from-left-4 duration-300">
             <div className="space-y-8">
+              <section className="space-y-4">
+                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">
+                  Session Engine
+                </h3>
+                <div className="grid grid-cols-1 gap-3">
+                  {SESSION_MODES.map((mode) => {
+                    const isSelected = settings.sessionMode === mode.id;
+                    const Icon =
+                      mode.id === "deepWork"
+                        ? Workflow
+                        : mode.id === "pomodoro"
+                          ? Clock3
+                          : TimerReset;
+                    return (
+                      <button
+                        key={mode.id}
+                        onClick={() =>
+                          setSettings((prev) => ({
+                            ...prev,
+                            sessionMode: mode.id,
+                          }))
+                        }
+                        className={`w-full p-4 rounded-2xl border transition-all text-left ${isSelected ? "accent-bg accent-contrast-text border-transparent" : "border-white/10 hover:bg-white/5"}`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Icon size={18} className="shrink-0 mt-0.5" />
+                          <div>
+                            <div className="text-xs font-black uppercase tracking-wide">
+                              {mode.label}
+                            </div>
+                            <div className="text-[10px] opacity-70 mt-1 leading-relaxed">
+                              {mode.description}
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+
               <section className="space-y-4">
                 <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">
                   Storage Node

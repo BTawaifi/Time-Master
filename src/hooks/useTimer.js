@@ -1,78 +1,324 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { LATENCY_BLOCKS } from '../constants';
 
 export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforced) => {
     const [timeLeft, setTimeLeft] = useState(settings.timerDuration);
     const [isActive, setIsActive] = useState(false);
     const [pomodoroState, setPomodoroState] = useState('focus');
     const [focusCount, setFocusCount] = useState(0);
+    const [ledger, setLedger] = useState({
+        activeStreamId: 'default',
+        streams: {
+            'default': {
+                id: 'default',
+                name: 'Primary Stream',
+                currentLinkIndex: 0,
+                elapsed: 0,
+                links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
+                history: []
+            }
+        }
+    });
+
+    const [latencySessionTotal, setLatencySessionTotal] = useState(0);
     const timerRef = useRef(null);
+    const previousModeRef = useRef(settings.sessionMode);
+    const sessionMode = settings.sessionMode;
+
+    const activeStream = ledger.streams[ledger.activeStreamId] || Object.values(ledger.streams)[0];
+
+    const pushLatencyHistory = useCallback((streamId, entry) => {
+        setLedger(prev => {
+            const stream = prev.streams[streamId];
+            if (!stream) return prev;
+            return {
+                ...prev,
+                streams: {
+                    ...prev.streams,
+                    [streamId]: {
+                        ...stream,
+                        history: [...stream.history, entry].slice(-6)
+                    }
+                }
+            };
+        });
+    }, []);
+
+    const transitionPomodoro = useCallback((autoResume = true) => {
+        if (pomodoroState === 'focus') {
+            setFocusCount(prev => prev + 1);
+            setPomodoroState('rest');
+            setTimeLeft(settings.restDuration);
+            playPeep(440, 0.5);
+        } else {
+            setPomodoroState('focus');
+            setTimeLeft(settings.timerDuration);
+            playPeep(880, 0.5);
+        }
+
+        if (autoResume) {
+            setTimeout(() => setIsActive(true), 100);
+        }
+    }, [pomodoroState, settings.restDuration, settings.timerDuration, playPeep]);
+
+    const resetLatencyWorkflow = useCallback(() => {
+        setIsActive(false);
+        setLedger({
+            activeStreamId: 'default',
+            streams: {
+                'default': {
+                    id: 'default',
+                    name: 'Primary Stream',
+                    currentLinkIndex: 0,
+                    elapsed: 0,
+                    links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
+                    history: []
+                }
+            }
+        });
+        setLatencySessionTotal(0);
+    }, []);
+
+    const addStream = useCallback((name) => {
+        const id = `stream_${Date.now()}`;
+        setLedger(prev => ({
+            ...prev,
+            activeStreamId: id,
+            streams: {
+                ...prev.streams,
+                [id]: {
+                    id,
+                    name,
+                    currentLinkIndex: 0,
+                    elapsed: 0,
+                    links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
+                    history: []
+                }
+            }
+        }));
+        setIsActive(false);
+    }, []);
+
+    const switchStream = useCallback((streamId) => {
+        setLedger(prev => ({ ...prev, activeStreamId: streamId }));
+        setIsActive(false);
+    }, []);
+
+    const removeStream = useCallback((streamId) => {
+        if (streamId === 'default') return;
+        setLedger(prev => {
+            const nextStreams = { ...prev.streams };
+            delete nextStreams[streamId];
+            const nextActiveId = prev.activeStreamId === streamId ? 'default' : prev.activeStreamId;
+            return {
+                ...prev,
+                activeStreamId: nextActiveId,
+                streams: nextStreams
+            };
+        });
+        setIsActive(false);
+    }, []);
+
+    const advanceLatencyBlock = useCallback((outcome = 'advance', comment = '') => {
+        const streamId = ledger.activeStreamId;
+        const currentStream = ledger.streams[streamId];
+        if (!currentStream) return;
+
+        const linkIndex = currentStream.currentLinkIndex;
+        const stepDuration = currentStream.elapsed; // In a ledger, elapsed is often per link or per stream. Let's treat it as link-elapsed for this logic.
+        
+        setIsActive(false);
+
+        const buildEntry = (label) => ({
+            block: `Link ${linkIndex + 1}`,
+            label,
+            duration: stepDuration,
+            comment: comment || '',
+            timestamp: new Date().toISOString()
+        });
+
+        setLedger(prev => {
+            const s = prev.streams[streamId];
+            const nextLinks = [...s.links];
+            
+            if (outcome === 'failure') {
+                return {
+                    ...prev,
+                    streams: {
+                        ...prev.streams,
+                        [streamId]: {
+                            ...s,
+                            currentLinkIndex: 0,
+                            elapsed: 0,
+                            history: [...s.history, buildEntry('Chain broken. Restarting.')].slice(-6)
+                        }
+                    }
+                };
+            }
+
+            const isLast = linkIndex === s.links.length - 1;
+            if (isLast) {
+                // Add a new link dynamically
+                const newId = `link_${s.links.length + 1}`;
+                nextLinks[linkIndex] = { ...nextLinks[linkIndex], status: 'completed' };
+                nextLinks.push({ id: newId, label: `Link ${s.links.length + 1}`, status: 'active' });
+                return {
+                    ...prev,
+                    streams: {
+                        ...prev.streams,
+                        [streamId]: {
+                            ...s,
+                            currentLinkIndex: linkIndex + 1,
+                            elapsed: 0, // Reset timer for new link
+                            links: nextLinks,
+                            history: [...s.history, buildEntry(`Link ${linkIndex + 1} finalized.`)].slice(-6)
+                        }
+                    }
+                };
+            } else {
+                nextLinks[linkIndex] = { ...nextLinks[linkIndex], status: 'completed' };
+                nextLinks[linkIndex + 1] = { ...nextLinks[linkIndex + 1], status: 'active' };
+                return {
+                    ...prev,
+                    streams: {
+                        ...prev.streams,
+                        [streamId]: {
+                            ...s,
+                            currentLinkIndex: linkIndex + 1,
+                            elapsed: 0,
+                            links: nextLinks,
+                            history: [...s.history, buildEntry(`Link ${linkIndex + 1} finalized.`)].slice(-6)
+                        }
+                    }
+                };
+            }
+        });
+
+        playPeep(880, 0.2);
+    }, [ledger.activeStreamId, ledger.streams, playPeep]);
 
     useEffect(() => {
-        if (isActive && timeLeft > 0) {
-            timerRef.current = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
-        } else if (timeLeft === 0 && isActive) {
-            setIsActive(false);
-            playAlarm();
-            if (settings.pomodoroOnly) {
-                if (pomodoroState === 'focus') {
-                    setFocusCount(prev => prev + 1);
-                    setPomodoroState('rest');
-                    setTimeLeft(settings.restDuration);
-                    playPeep(440, 0.5);
-                    setTimeout(() => setIsActive(true), 100);
-                } else {
-                    setPomodoroState('focus');
-                    setTimeLeft(settings.timerDuration);
-                    playPeep(880, 0.5);
-                    setTimeout(() => setIsActive(true), 100);
-                }
-            } else {
-                setIsEnforced(true);
-                if (window.electron) window.electron.triggerEnforce();
-            }
-        } else {
-            clearInterval(timerRef.current);
+        if (previousModeRef.current === sessionMode) {
+            return;
         }
-        return () => clearInterval(timerRef.current);
-    }, [isActive, timeLeft, settings.pomodoroOnly, pomodoroState, playAlarm, playPeep, settings.restDuration, settings.timerDuration, setIsEnforced]);
 
-    const adjustTimer = useCallback((amt) => {
-        const key = pomodoroState === 'focus' ? 'timerDuration' : 'restDuration';
-        const nd = Math.max(60, settings[key] + amt);
-        setSettings(prev => ({ ...prev, [key]: nd }));
-        if (!isActive) setTimeLeft(nd);
-    }, [pomodoroState, settings, setSettings, isActive]);
-
-    const resetTimer = useCallback(() => {
-        playPeep(440);
+        previousModeRef.current = sessionMode;
+        clearInterval(timerRef.current);
         setIsActive(false);
-        setTimeLeft(pomodoroState === 'focus' ? settings.timerDuration : settings.restDuration);
-    }, [pomodoroState, settings.timerDuration, settings.restDuration, playPeep]);
+        setPomodoroState('focus');
+        setFocusCount(0);
+        setTimeLeft(settings.timerDuration);
+        resetLatencyWorkflow();
+    }, [sessionMode, settings.timerDuration, resetLatencyWorkflow]);
 
-    const forceFinish = useCallback(() => {
-        playPeep(880);
+    useEffect(() => {
+        if (sessionMode === 'latencyBlocks' || isActive) {
+            return;
+        }
+
+        setTimeLeft(sessionMode === 'pomodoro' && pomodoroState === 'rest'
+            ? settings.restDuration
+            : settings.timerDuration);
+    }, [sessionMode, isActive, pomodoroState, settings.restDuration, settings.timerDuration]);
+
+    useEffect(() => {
+        clearInterval(timerRef.current);
+
+        if (!isActive) {
+            return () => clearInterval(timerRef.current);
+        }
+
+        if (sessionMode === 'latencyBlocks') {
+            timerRef.current = setInterval(() => {
+                setLatencySessionTotal((prev) => prev + 1);
+                setLedger(prev => {
+                    const s = prev.streams[prev.activeStreamId];
+                    if (!s) return prev;
+                    return {
+                        ...prev,
+                        streams: {
+                            ...prev.streams,
+                            [prev.activeStreamId]: {
+                                ...s,
+                                elapsed: s.elapsed + 1
+                            }
+                        }
+                    };
+                });
+            }, 1000);
+            return () => clearInterval(timerRef.current);
+        }
+
+        if (timeLeft > 0) {
+            timerRef.current = setInterval(() => setTimeLeft((prev) => Math.max(0, prev - 1)), 1000);
+            return () => clearInterval(timerRef.current);
+        }
+
         setIsActive(false);
-        if (settings.pomodoroOnly) {
-            if (pomodoroState === 'focus') {
-                setFocusCount(prev => prev + 1);
-                setPomodoroState('rest');
-                setTimeLeft(settings.restDuration);
-            } else {
-                setPomodoroState('focus');
-                setTimeLeft(settings.timerDuration);
-            }
-            setTimeout(() => setIsActive(true), 100);
+        playAlarm();
+
+        if (sessionMode === 'pomodoro') {
+            transitionPomodoro(true);
         } else {
             setIsEnforced(true);
             if (window.electron) window.electron.triggerEnforce();
         }
-    }, [playPeep, settings.pomodoroOnly, pomodoroState, settings.restDuration, settings.timerDuration, setIsEnforced]);
+
+        return () => clearInterval(timerRef.current);
+    }, [isActive, timeLeft, sessionMode, playAlarm, transitionPomodoro, setIsEnforced]);
+
+    const adjustTimer = useCallback((amt) => {
+        if (sessionMode === 'latencyBlocks') {
+            return;
+        }
+
+        const key = pomodoroState === 'focus' ? 'timerDuration' : 'restDuration';
+        const nd = Math.max(60, settings[key] + amt);
+        setSettings(prev => ({ ...prev, [key]: nd }));
+        if (!isActive) setTimeLeft(nd);
+    }, [sessionMode, pomodoroState, settings, setSettings, isActive]);
+
+    const resetTimer = useCallback(() => {
+        playPeep(440);
+        setIsActive(false);
+        if (sessionMode === 'latencyBlocks') {
+            resetLatencyWorkflow();
+            return;
+        }
+
+        setTimeLeft(pomodoroState === 'focus' ? settings.timerDuration : settings.restDuration);
+    }, [sessionMode, pomodoroState, settings.timerDuration, settings.restDuration, playPeep, resetLatencyWorkflow]);
+
+    const forceFinish = useCallback(() => {
+        setIsActive(false);
+
+        if (sessionMode === 'pomodoro') {
+            transitionPomodoro(true);
+            return;
+        }
+
+        playPeep(880);
+
+        if (sessionMode === 'deepWork') {
+            setIsEnforced(true);
+            if (window.electron) window.electron.triggerEnforce();
+            return;
+        }
+
+        advanceLatencyBlock();
+    }, [sessionMode, playPeep, transitionPomodoro, setIsEnforced, advanceLatencyBlock]);
 
     return {
         timeLeft, setTimeLeft,
         isActive, setIsActive,
         pomodoroState, setPomodoroState,
         focusCount, setFocusCount,
+        ledger,
+        latencySessionTotal,
+        advanceLatencyBlock,
+        resetLatencyWorkflow,
+        addStream,
+        switchStream,
         adjustTimer, resetTimer, forceFinish
     };
 };

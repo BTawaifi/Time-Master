@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSettings } from './context/SettingsContext';
 import { useAudio } from './hooks/useAudio';
 import { useTimer } from './hooks/useTimer';
-import { THEMES } from './constants';
+import { THEMES, LATENCY_BLOCKS } from './constants';
 import { Header } from './components/Header';
 import { SettingsModal } from './components/SettingsModal';
 import { CustomThemeModal } from './components/CustomThemeModal';
@@ -21,6 +21,7 @@ function App() {
     const [showToneModal, setShowToneModal] = useState(null);
     const [archiveData, setArchiveData] = useState({});
     const [isMaximized, setIsMaximized] = useState(false);
+    const [showManualReview, setShowManualReview] = useState(false);
     const [formData, setFormData] = useState({ activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', bet: '', unlocked: false });
 
     // Aggressive Protocol state
@@ -29,12 +30,20 @@ function App() {
     const escalationAudioRef = useRef(null);
 
     const { playReminder, playAlarm, playPeep } = useAudio(settings);
+    const isReviewing = isEnforced || showManualReview;
 
     const {
         timeLeft, setTimeLeft,
         isActive, setIsActive,
-        pomodoroState, setPomodoroState,
-        focusCount, setFocusCount,
+        pomodoroState,
+        focusCount,
+        ledger,
+        latencySessionTotal,
+        advanceLatencyBlock,
+        resetLatencyWorkflow,
+        addStream,
+        switchStream,
+        removeStream,
         adjustTimer, resetTimer, forceFinish
     } = useTimer(settings, setSettings, playPeep, playAlarm, setIsEnforced);
 
@@ -102,9 +111,10 @@ function App() {
             timers.push(timerId);
         };
 
-        scheduleReminder('idle', !isActive && !isEnforced && !showArchives && !showSettingsModal && !showCustomModal && !showToneModal);
-        scheduleReminder('focus', isActive && !isEnforced && !showArchives);
-        scheduleReminder('review', isEnforced && !showArchives);
+        const isSonicOn = isEnforced && settings.enforcement?.soundCrescendo;
+        scheduleReminder('idle', !isActive && !isReviewing && !showArchives && !showSettingsModal && !showCustomModal && !showToneModal);
+        scheduleReminder('focus', isActive && !isReviewing && !showArchives);
+        scheduleReminder('review', isReviewing && !showArchives && !isSonicOn);
 
         return () => {
             timers.forEach(window.clearInterval);
@@ -114,42 +124,44 @@ function App() {
         playReminder,
         isActive,
         isEnforced,
+        isReviewing,
         showArchives,
         showSettingsModal,
         showCustomModal,
         showToneModal,
     ]);
 
-    // Enforcement level escalation — increments every 30s while enforced
+    // Enforcement level escalation — increments every 30s while in review
     useEffect(() => {
-        if (isEnforced) {
+        if (isReviewing) {
             enforcementStartRef.current = Date.now();
             setEnforcementLevel(1);
             if (window.electron) window.electron.setEclipseLevel(1);
+            const escalationInterval = (settings.reminders?.review?.interval || 30) * 1000;
             const interval = setInterval(() => {
                 setEnforcementLevel(prev => {
                     const next = prev + 1;
                     if (window.electron) window.electron.setEclipseLevel(next);
                     return next;
                 });
-            }, 30000);
+            }, escalationInterval);
             return () => clearInterval(interval);
         } else {
             setEnforcementLevel(0);
             if (window.electron) window.electron.setEclipseLevel(0);
             enforcementStartRef.current = null;
         }
-    }, [isEnforced]);
+    }, [isReviewing]);
 
     // Aggressive Protocol: Sonic Escalation — plays escalating tones during enforcement
     useEffect(() => {
-        if (!isEnforced || !settings.enforcement?.soundCrescendo || enforcementLevel < 2) {
+        if (!isEnforced || !settings.enforcement?.soundCrescendo || enforcementLevel < 1) {
             return undefined;
         }
 
-        const volume = 0.05 + enforcementLevel * 0.06;
-        const freq = 300 + enforcementLevel * 80;
-        const dur = 0.15 + enforcementLevel * 0.05;
+        const volume = Math.min(0.8, 0.03 + enforcementLevel * 0.07);
+        const freq = Math.min(2500, 200 + enforcementLevel * 120);
+        const dur = Math.min(0.8, 0.15 + enforcementLevel * 0.08);
         let audioCtx;
         let osc;
         let gain;
@@ -167,14 +179,14 @@ function App() {
                 if (osc) {
                     osc.onended = null;
                 }
-            } catch (_error) {}
-            try { osc?.disconnect(); } catch (_error) {}
-            try { gain?.disconnect(); } catch (_error) {}
+            } catch (_error) { }
+            try { osc?.disconnect(); } catch (_error) { }
+            try { gain?.disconnect(); } catch (_error) { }
             try {
                 if (audioCtx && audioCtx.state !== 'closed') {
-                    audioCtx.close().catch(() => {});
+                    audioCtx.close().catch(() => { });
                 }
-            } catch (_error) {}
+            } catch (_error) { }
         };
 
         try {
@@ -225,8 +237,55 @@ function App() {
     }, [isActive, isEnforced, handleSystemMinimize]);
 
     const buildLogData = useCallback((base, isSkipped = false) => {
-        return { ...base };
+        return {
+            ...base,
+            skipped: isSkipped,
+            sessionMode: settings.sessionMode,
+            reviewSource: showManualReview ? 'manual' : 'enforced',
+            sessionState: settings.sessionMode === 'pomodoro'
+                ? { phase: pomodoroState, completedFocusSessions: focusCount }
+                : settings.sessionMode === 'latencyBlocks'
+                    ? {
+                        ledger: ledger,
+                        totalSessionSeconds: latencySessionTotal,
+                    }
+                    : { elapsedFocusSeconds: Math.max(0, settings.timerDuration - timeLeft) },
+        };
+    }, [
+        settings.sessionMode,
+        settings.timerDuration,
+        pomodoroState,
+        focusCount,
+        ledger,
+        latencySessionTotal,
+        showManualReview,
+        timeLeft,
+    ]);
+
+    const resetReviewForm = useCallback(() => {
+        const reset = {
+            activity: '',
+            output: '',
+            method: '',
+            utility: 5,
+            friction: '',
+            uncertainty: 'stable',
+            focusDepth: 5,
+            energyLevel: 5,
+            hypothesisValid: true,
+            hypothesisNote: '',
+            nextStep: '',
+            quickWin: '',
+            unlocked: false,
+        };
+
+        setFormData(prev => ({ ...prev, ...reset }));
     }, []);
+
+    const openManualReview = useCallback(() => {
+        setIsActive(false);
+        setShowManualReview(true);
+    }, [setIsActive]);
 
     const handleAuthorization = (shouldPivot) => {
         if (!formData.activity || !formData.output || !formData.nextStep) return;
@@ -237,19 +296,29 @@ function App() {
 
             if (window.electron) window.electron.saveLog(logData, settings.logFilePath);
             setIsEnforced(false);
+            setShowManualReview(false);
             if (window.electron) window.electron.cancelEnforce();
-            const reset = { activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', unlocked: false };
+            resetReviewForm();
             if (!shouldPivot) {
-                setFormData(prev => ({ ...prev, ...reset }));
-                setTimeLeft(settings.timerDuration);
-                setIsActive(true);
-                playPeep(880, 0.2);
+                if (settings.sessionMode === 'latencyBlocks') {
+                    resetLatencyWorkflow();
+                    setIsActive(false);
+                    playPeep(880, 0.2);
+                } else {
+                    setTimeLeft(settings.timerDuration);
+                    setIsActive(true);
+                    playPeep(880, 0.2);
+                }
             } else {
-                setFormData(prev => ({ ...reset, bet: prev.bet }));
-                setTimeLeft(settings.timerDuration);
+                if (settings.sessionMode === 'latencyBlocks') {
+                    resetLatencyWorkflow();
+                } else {
+                    setTimeLeft(settings.timerDuration);
+                }
                 setIsActive(false);
                 playPeep(440, 0.2);
-                handleSystemMinimize();
+                // We purposefully do NOT call handleSystemMinimize() here so the window stays visible
+                // for the 'Save & Modify' pivot, preserving the user's focus on reconfiguration.
             }
         }
     };
@@ -257,13 +326,15 @@ function App() {
     const handleSkip = () => {
         playPeep(440, 0.3);
 
-
-
         setIsEnforced(false);
+        setShowManualReview(false);
         if (window.electron) window.electron.cancelEnforce();
-        const reset = { activity: '', output: '', method: '', utility: 5, friction: '', uncertainty: 'stable', focusDepth: 5, energyLevel: 5, hypothesisValid: true, hypothesisNote: '', nextStep: '', quickWin: '', unlocked: false };
-        setFormData(prev => ({ ...prev, ...reset }));
-        setTimeLeft(settings.timerDuration);
+        resetReviewForm();
+        if (settings.sessionMode === 'latencyBlocks') {
+            resetLatencyWorkflow();
+        } else {
+            setTimeLeft(settings.timerDuration);
+        }
         setIsActive(false);
     };
 
@@ -316,20 +387,25 @@ function App() {
                     setShowArchives={setShowArchives}
                     settings={settings}
                 />
-            ) : !isEnforced ? (
+            ) : !isReviewing ? (
                 <ActiveTimerView
                     settings={settings}
                     setSettings={setSettings}
                     pomodoroState={pomodoroState}
-                    setPomodoroState={setPomodoroState}
                     focusCount={focusCount}
-                    setFocusCount={setFocusCount}
                     timeLeft={timeLeft}
-                    setTimeLeft={setTimeLeft}
                     isActive={isActive}
                     setIsActive={setIsActive}
                     formData={formData}
                     setFormData={setFormData}
+                    ledger={ledger}
+                    latencySessionTotal={latencySessionTotal}
+                    advanceLatencyBlock={advanceLatencyBlock}
+                    resetLatencyWorkflow={resetLatencyWorkflow}
+                    addStream={addStream}
+                    switchStream={switchStream}
+                    removeStream={removeStream}
+                    openManualReview={openManualReview}
                     adjustTimer={adjustTimer}
                     forceFinish={forceFinish}
                     resetTimer={resetTimer}
@@ -340,6 +416,7 @@ function App() {
                     formData={formData}
                     setFormData={setFormData}
                     settings={settings}
+                    isEnforcedReview={isEnforced}
                     handleAuthorization={handleAuthorization}
                     handleSkip={handleSkip}
                 />

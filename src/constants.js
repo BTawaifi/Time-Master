@@ -173,11 +173,50 @@ export const THEMES = [
   },
 ];
 
+export const SESSION_MODES = [
+  {
+    id: "deepWork",
+    label: "Deep Work",
+    description: "Countdown focus that escalates into review and enforcement.",
+  },
+  {
+    id: "pomodoro",
+    label: "Pomodoro",
+    description: "Alternating focus and rest blocks for steady cadence.",
+  },
+  {
+    id: "latencyBlocks",
+    label: "Neuro-Ledger",
+    description: "Multi-stream DAG architecture for parallel task management and infinite chains.",
+  },
+];
+
+export const LATENCY_BLOCKS = [
+  {
+    id: "link_1",
+    chip: "1",
+    label: "Link I",
+    description: "The first connection in your chain of action.",
+  },
+  {
+    id: "link_2",
+    chip: "2",
+    label: "Link II",
+    description: "Strengthening the sequence through focused move.",
+  },
+  {
+    id: "link_3",
+    chip: "3",
+    label: "Link III",
+    description: "Closing the loop to secure the chain's integrity.",
+  },
+];
+
 export const DEFAULT_SETTINGS = {
   themeId: "enforcer",
   autoMinimize: true,
   stayOnTop: false,
-  pomodoroOnly: false,
+  sessionMode: "deepWork",
   timerDuration: 25 * 60,
   restDuration: 5 * 60,
   logFilePath: "",

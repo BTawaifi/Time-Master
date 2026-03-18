@@ -6,7 +6,7 @@ const defaults = {
   themeId: 'enforcer',
   autoMinimize: true,
   stayOnTop: false,
-  pomodoroOnly: false,
+  sessionMode: 'deepWork',
   timerDuration: 1500,
   restDuration: 300,
   logFilePath: '',
@@ -26,6 +26,7 @@ test('normalizeSettings preserves valid values and theme ids', () => {
   const normalized = normalizeSettings({
     themeId: 'custom',
     autoMinimize: false,
+    sessionMode: 'latencyBlocks',
     timerDuration: 1800,
     customTheme: { bg: '#222' },
     reminders: {
@@ -36,6 +37,7 @@ test('normalizeSettings preserves valid values and theme ids', () => {
 
   assert.equal(normalized.themeId, 'custom');
   assert.equal(normalized.autoMinimize, false);
+  assert.equal(normalized.sessionMode, 'latencyBlocks');
   assert.equal(normalized.timerDuration, 1800);
   assert.equal(normalized.customTheme.bg, '#222');
   assert.equal(normalized.customTheme.accent, '#fff');
@@ -47,7 +49,7 @@ test('normalizeSettings preserves valid values and theme ids', () => {
 test('normalizeSettings clamps invalid nested values back to safe ranges/defaults', () => {
   const normalized = normalizeSettings({
     themeId: 'broken',
-    pomodoroOnly: 'yes',
+    sessionMode: 'warp-speed',
     timerDuration: -10,
     restDuration: Number.POSITIVE_INFINITY,
     logFilePath: 44,
@@ -58,7 +60,7 @@ test('normalizeSettings clamps invalid nested values back to safe ranges/default
   }, defaults, ['enforcer', 'custom']);
 
   assert.equal(normalized.themeId, 'enforcer');
-  assert.equal(normalized.pomodoroOnly, false);
+  assert.equal(normalized.sessionMode, 'deepWork');
   assert.equal(normalized.timerDuration, defaults.timerDuration);
   assert.equal(normalized.restDuration, defaults.restDuration);
   assert.equal(normalized.logFilePath, '');
@@ -70,5 +72,13 @@ test('normalizeSettings clamps invalid nested values back to safe ranges/default
   assert.equal(normalized.reminders.idle.tone.duration, 0.1);
   assert.equal(normalized.enforcement.desktopEclipse, false);
   assert.equal(normalized.enforcement.mantraGate, true);
+});
+
+test('normalizeSettings migrates legacy mode flags into sessionMode', () => {
+  const pomodoroSettings = normalizeSettings({ pomodoroOnly: true }, defaults, ['enforcer', 'custom']);
+  const latencySettings = normalizeSettings({ latencyBlocks: true }, defaults, ['enforcer', 'custom']);
+
+  assert.equal(pomodoroSettings.sessionMode, 'pomodoro');
+  assert.equal(latencySettings.sessionMode, 'latencyBlocks');
 });
 
