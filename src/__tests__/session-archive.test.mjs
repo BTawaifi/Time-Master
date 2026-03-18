@@ -63,3 +63,16 @@ test('session archive extracts cycle trails for latency blocks', () => {
   const deepWorkLog = { sessionMode: 'deepWork' };
   assert.deepEqual(getSessionLatencyHistory(deepWorkLog), []);
 });
+
+test('session archive helpers summarize quickNote sessions', () => {
+  const log = {
+    sessionMode: 'quickNote',
+    sessionState: {},
+  };
+
+  assert.equal(getSessionModeLabel(log.sessionMode), 'Quick Note');
+  assert.equal(getSessionStateSummary(log), 'Manual Note');
+  assert.deepEqual(getSessionStateDetails(log), [
+    ['Note type', 'Quick Note']
+  ]);
+});

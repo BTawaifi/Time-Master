@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSettings } from './context/SettingsContext';
 import { useAudio } from './hooks/useAudio';
 import { useTimer } from './hooks/useTimer';
@@ -11,6 +11,7 @@ import { ActiveTimerView } from './components/ActiveTimerView';
 import { SessionReviewView } from './components/SessionReviewView';
 import { ArchiveView } from './components/ArchiveView';
 import { EnforcerOverlay } from './components/EnforcerOverlay';
+import { QuickNotesPanel } from './components/QuickNotesPanel';
 
 function App() {
     const { settings, setSettings } = useSettings();
@@ -19,6 +20,7 @@ function App() {
     const [showSettingsModal, setShowSettingsModal] = useState(false);
     const [showCustomModal, setShowCustomModal] = useState(false);
     const [showToneModal, setShowToneModal] = useState(null);
+    const [showQuickNotes, setShowQuickNotes] = useState(false);
     const [archiveData, setArchiveData] = useState({});
     const [isMaximized, setIsMaximized] = useState(false);
     const [showManualReview, setShowManualReview] = useState(false);
@@ -135,6 +137,11 @@ function App() {
         };
     }, [handleEnforce]);
 
+    const isLedgerRunning = useMemo(() => 
+        settings.sessionMode === 'latencyBlocks' && Object.values(ledger?.streams || {}).some(s => s.isRunning),
+    [settings.sessionMode, ledger?.streams]);
+    const isCurrentlyActive = useMemo(() => isActive || isLedgerRunning, [isActive, isLedgerRunning]);
+
     useEffect(() => {
         const timers = [];
         const scheduleReminder = (scope, enabled) => {
@@ -146,14 +153,14 @@ function App() {
             timers.push(timerId);
         };
 
-        const isIdle = !isActive && !isReviewing;
+        const isIdle = !isCurrentlyActive && !isReviewing;
         const isSonicOn = Array.isArray(settings.enforcement?.soundCrescendo) && (
             (isEnforced && settings.enforcement.soundCrescendo.includes('review')) || 
-            (isActive && settings.enforcement.soundCrescendo.includes('active')) ||
+            (isCurrentlyActive && settings.enforcement.soundCrescendo.includes('active')) ||
             (isIdle && settings.enforcement.soundCrescendo.includes('idle'))
         );
-        scheduleReminder('idle', !isActive && !isReviewing && !showArchives && !showSettingsModal && !showCustomModal && !showToneModal);
-        scheduleReminder('focus', isActive && !isReviewing && !showArchives);
+        scheduleReminder('idle', isIdle && !showArchives && !showSettingsModal && !showCustomModal && !showToneModal);
+        scheduleReminder('focus', isCurrentlyActive && !isReviewing && !showArchives);
         scheduleReminder('review', isReviewing && !showArchives && !isSonicOn);
 
         return () => {
@@ -161,8 +168,10 @@ function App() {
         };
     }, [
         settings.reminders,
+        settings.enforcement,
         playReminder,
         isActive,
+        isCurrentlyActive,
         isEnforced,
         isReviewing,
         showArchives,
@@ -174,9 +183,9 @@ function App() {
     // Enforcement level escalation — increments every 30s while in review
     // Enforcement level escalation — increments every 30s while in review, active, or idle mode if selected
     useEffect(() => {
-        const isIdle = !isActive && !isReviewing;
+        const isIdle = !isCurrentlyActive && !isReviewing;
         const isEclipseIdle = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('idle') && isIdle;
-        const isEclipseActive = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('active') && isActive;
+        const isEclipseActive = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('active') && isCurrentlyActive;
         const isEclipseReview = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('review') && isReviewing;
         
         if (isReviewing || isEclipseActive || isEclipseIdle) {
@@ -197,13 +206,13 @@ function App() {
             if (window.electron) window.electron.setEclipseLevel(0);
             enforcementStartRef.current = null;
         }
-    }, [isReviewing, isActive, settings.enforcement?.desktopEclipse, settings.reminders?.review?.interval]);
+    }, [isReviewing, isCurrentlyActive, settings.enforcement?.desktopEclipse, settings.reminders?.review?.interval]);
 
     // Aggressive Protocol: Sonic Escalation — plays escalating tones during enforcement
     useEffect(() => {
-        const isIdle = !isActive && !isReviewing;
+        const isIdle = !isCurrentlyActive && !isReviewing;
         const isSonicIdle = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('idle') && isIdle;
-        const isSonicActive = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('active') && isActive;
+        const isSonicActive = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('active') && isCurrentlyActive;
         const isSonicReview = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('review') && isEnforced;
         
         if ((!isSonicReview && !isSonicActive && !isSonicIdle) || enforcementLevel < 1) {
@@ -271,7 +280,7 @@ function App() {
         }
 
         return cleanup;
-    }, [enforcementLevel, isEnforced, isActive, isReviewing, settings.enforcement?.soundCrescendo]);
+    }, [enforcementLevel, isEnforced, isCurrentlyActive, isReviewing, settings.enforcement?.soundCrescendo]);
 
 
 
@@ -281,11 +290,14 @@ function App() {
         }
     }, [settings.autoMinimize]);
 
+    const prevActiveRef = useRef(false);
+
     useEffect(() => {
-        if (isActive && !isEnforced) {
+        if (isCurrentlyActive && !prevActiveRef.current && !isEnforced) {
             handleSystemMinimize();
         }
-    }, [isActive, isEnforced, handleSystemMinimize]);
+        prevActiveRef.current = isCurrentlyActive;
+    }, [isCurrentlyActive, isEnforced, handleSystemMinimize]);
 
     const buildLogData = useCallback((base, isSkipped = false) => {
         return {
@@ -374,6 +386,23 @@ function App() {
         }
     };
 
+    const handleGoBack = () => {
+        playPeep(440, 0.2);
+        setIsEnforced(false);
+        setShowManualReview(false);
+        if (window.electron) window.electron.cancelEnforce();
+        
+        // If timer is finished (timeLeft <= 0), ensure it stays inactive/idle
+        if (timeLeft <= 0) {
+            setIsActive(false);
+            if (settings.sessionMode === 'latencyBlocks') {
+                resetLatencyWorkflow();
+            } else {
+                setTimeLeft(settings.timerDuration);
+            }
+        }
+    };
+
     const handleSkip = () => {
         playPeep(440, 0.3);
 
@@ -388,10 +417,10 @@ function App() {
         }
         setIsActive(false);
     };
-    const isTimerRunning = isActive || (settings.sessionMode === 'latencyBlocks' && Object.values(ledger?.streams || {}).some(s => s.isRunning));
+    const isTimerRunning = isCurrentlyActive;
 
     return (
-        <div className="h-screen w-screen overflow-hidden flex flex-col font-sans selection:bg-app-primary selection:text-white bg-app-bg bg-grid-pattern relative text-app-text">
+        <div className="h-screen w-screen overflow-hidden flex flex-col font-sans selection:bg-app-primary selection:text-white bg-app-bg relative text-app-text">
             <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-app-primary/10 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 z-0"></div>
             <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-app-success/5 rounded-full blur-[100px] pointer-events-none translate-y-1/2 z-0"></div>
             {/* Aggressive Protocols: Sonic Escalation, Desktop Eclipse */}
@@ -407,11 +436,43 @@ function App() {
                 isTimerRunning={isTimerRunning}
                 setShowArchives={setShowArchives}
                 setShowSettingsModal={setShowSettingsModal}
+                setShowQuickNotes={setShowQuickNotes}
+                showQuickNotes={showQuickNotes}
                 isMaximized={isMaximized}
                 settings={settings}
                 setSettings={setSettings}
                 setArchiveData={setArchiveData}
             />
+            {showQuickNotes && <QuickNotesPanel 
+                onClose={() => setShowQuickNotes(false)} 
+                onSaveToArchive={async (noteText) => {
+                    if (window.electron) {
+                        const logData = {
+                            timestamp: new Date().toLocaleString(),
+                            sessionMode: 'quickNote',
+                            activity: 'Quick Note',
+                            output: noteText,
+                            method: 'manual',
+                            utility: 5,
+                            friction: '',
+                            uncertainty: 'stable',
+                            focusDepth: 5,
+                            energyLevel: 5,
+                            hypothesisValid: true,
+                            hypothesisNote: '',
+                            nextStep: '',
+                            quickWin: '',
+                            bet: 'Quick Idea capture',
+                            reviewSource: 'manual',
+                            sessionState: {}
+                        };
+                        await window.electron.saveLog(logData, settings.logFilePath);
+                        // Refresh archive data if visible or for next open
+                        const logs = await window.electron.getLogs(settings.logFilePath);
+                        if (logs) setArchiveData(logs);
+                    }
+                }} 
+            />}
             {showSettingsModal && (
                 <SettingsModal
                     settings={settings}
@@ -481,6 +542,7 @@ function App() {
                     isEnforcedReview={isEnforced}
                     handleAuthorization={handleAuthorization}
                     handleSkip={handleSkip}
+                    handleGoBack={handleGoBack}
                 />
             )}
         </div>
