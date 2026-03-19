@@ -319,7 +319,7 @@ if (ipcMain) {
     ipcMain.on('set-enforcement', (event, config) => { enforcementConfig = normalizeEnforcementConfig(config); });
     ipcMain.on('set-eclipse-level', (event, level) => {
         const normalizedLevel = normalizeEclipseLevel(level);
-        if (!enforcementConfig.desktopEclipse || normalizedLevel === 0) { closeEclipseWindows(); return; }
+        if (!Array.isArray(enforcementConfig.desktopEclipse) || enforcementConfig.desktopEclipse.length === 0 || normalizedLevel === 0) { closeEclipseWindows(); return; }
         
         if (eclipseWindows.length === 0) {
             const displays = screen.getAllDisplays();
@@ -354,7 +354,7 @@ if (ipcMain) {
             if (mainWindow.isMinimized()) mainWindow.restore();
             
             // Set Kiosk before showing to prevent taskbar flicker on some OS versions
-            const useKiosk = enforcementConfig.kioskMode === true;
+            const useKiosk = Array.isArray(enforcementConfig.kioskMode) && enforcementConfig.kioskMode.includes('review');
             mainWindow.setKiosk(useKiosk);
             mainWindow.setSkipTaskbar(true);
             

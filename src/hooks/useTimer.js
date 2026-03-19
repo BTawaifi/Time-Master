@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { LATENCY_BLOCKS } from '../constants';
 
 export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforced) => {
     const [timeLeft, setTimeLeft] = useState(settings.timerDuration);
@@ -14,6 +13,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                 name: 'Primary Stream',
                 currentLinkIndex: 0,
                 elapsed: 0,
+                isRunning: false,
                 links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
                 history: []
             }
@@ -22,27 +22,13 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
 
     const [latencySessionTotal, setLatencySessionTotal] = useState(0);
     const timerRef = useRef(null);
+    const ledgerRef = useRef(ledger);
     const previousModeRef = useRef(settings.sessionMode);
+
+    useEffect(() => {
+        ledgerRef.current = ledger;
+    }, [ledger]);
     const sessionMode = settings.sessionMode;
-
-    const activeStream = ledger.streams[ledger.activeStreamId] || Object.values(ledger.streams)[0];
-
-    const pushLatencyHistory = useCallback((streamId, entry) => {
-        setLedger(prev => {
-            const stream = prev.streams[streamId];
-            if (!stream) return prev;
-            return {
-                ...prev,
-                streams: {
-                    ...prev.streams,
-                    [streamId]: {
-                        ...stream,
-                        history: [...stream.history, entry].slice(-6)
-                    }
-                }
-            };
-        });
-    }, []);
 
     const transitionPomodoro = useCallback((autoResume = true) => {
         if (pomodoroState === 'focus') {
@@ -71,6 +57,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                     name: 'Primary Stream',
                     currentLinkIndex: 0,
                     elapsed: 0,
+                    isRunning: false,
                     links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
                     history: []
                 }
@@ -91,17 +78,16 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                     name,
                     currentLinkIndex: 0,
                     elapsed: 0,
+                    isRunning: false,
                     links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
                     history: []
                 }
             }
         }));
-        setIsActive(false);
     }, []);
 
     const switchStream = useCallback((streamId) => {
         setLedger(prev => ({ ...prev, activeStreamId: streamId }));
-        setIsActive(false);
     }, []);
 
     const removeStream = useCallback((streamId) => {
@@ -116,7 +102,57 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                 streams: nextStreams
             };
         });
-        setIsActive(false);
+    }, []);
+
+    const toggleStream = useCallback((streamId) => {
+        setLedger(prev => {
+            const s = prev.streams[streamId];
+            if (!s) return prev;
+            return {
+                ...prev,
+                streams: {
+                    ...prev.streams,
+                    [streamId]: {
+                        ...s,
+                        isRunning: !s.isRunning
+                    }
+                }
+            };
+        });
+    }, []);
+
+    const renameStream = useCallback((streamId, newName) => {
+        setLedger(prev => {
+            const s = prev.streams[streamId];
+            if (!s) return prev;
+            return {
+                ...prev,
+                streams: {
+                    ...prev.streams,
+                    [streamId]: {
+                        ...s,
+                        name: newName
+                    }
+                }
+            };
+        });
+    }, []);
+
+    const updateLinkNote = useCallback((streamId, linkId, note) => {
+        setLedger(prev => {
+            const s = prev.streams[streamId];
+            if (!s) return prev;
+            return {
+                ...prev,
+                streams: {
+                    ...prev.streams,
+                    [streamId]: {
+                        ...s,
+                        links: s.links.map(l => l.id === linkId ? { ...l, note } : l)
+                    }
+                }
+            };
+        });
     }, []);
 
     const advanceLatencyBlock = useCallback((outcome = 'advance', comment = '') => {
@@ -126,8 +162,6 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
 
         const linkIndex = currentStream.currentLinkIndex;
         const stepDuration = currentStream.elapsed; // In a ledger, elapsed is often per link or per stream. Let's treat it as link-elapsed for this logic.
-        
-        setIsActive(false);
 
         const buildEntry = (label) => ({
             block: `Link ${linkIndex + 1}`,
@@ -140,7 +174,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
         setLedger(prev => {
             const s = prev.streams[streamId];
             const nextLinks = [...s.links];
-            
+
             if (outcome === 'failure') {
                 return {
                     ...prev,
@@ -150,6 +184,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                             ...s,
                             currentLinkIndex: 0,
                             elapsed: 0,
+                            isRunning: false,
                             history: [...s.history, buildEntry('Chain broken. Restarting.')].slice(-6)
                         }
                     }
@@ -170,6 +205,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                             ...s,
                             currentLinkIndex: linkIndex + 1,
                             elapsed: 0, // Reset timer for new link
+                            isRunning: false,
                             links: nextLinks,
                             history: [...s.history, buildEntry(`Link ${linkIndex + 1} finalized.`)].slice(-6)
                         }
@@ -186,6 +222,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                             ...s,
                             currentLinkIndex: linkIndex + 1,
                             elapsed: 0,
+                            isRunning: false,
                             links: nextLinks,
                             history: [...s.history, buildEntry(`Link ${linkIndex + 1} finalized.`)].slice(-6)
                         }
@@ -224,28 +261,28 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
     useEffect(() => {
         clearInterval(timerRef.current);
 
-        if (!isActive) {
+        if (sessionMode === 'latencyBlocks') {
+            timerRef.current = setInterval(() => {
+                const streams = Object.values(ledgerRef.current.streams);
+                const anyRunning = streams.some(s => s.isRunning);
+                
+                if (anyRunning) {
+                    setLedger(prev => {
+                        const nextStreams = { ...prev.streams };
+                        for (const id in nextStreams) {
+                            if (nextStreams[id].isRunning) {
+                                nextStreams[id] = { ...nextStreams[id], elapsed: nextStreams[id].elapsed + 1 };
+                            }
+                        }
+                        return { ...prev, streams: nextStreams };
+                    });
+                    setLatencySessionTotal(prev => prev + 1);
+                }
+            }, 1000);
             return () => clearInterval(timerRef.current);
         }
 
-        if (sessionMode === 'latencyBlocks') {
-            timerRef.current = setInterval(() => {
-                setLatencySessionTotal((prev) => prev + 1);
-                setLedger(prev => {
-                    const s = prev.streams[prev.activeStreamId];
-                    if (!s) return prev;
-                    return {
-                        ...prev,
-                        streams: {
-                            ...prev.streams,
-                            [prev.activeStreamId]: {
-                                ...s,
-                                elapsed: s.elapsed + 1
-                            }
-                        }
-                    };
-                });
-            }, 1000);
+        if (!isActive) {
             return () => clearInterval(timerRef.current);
         }
 
@@ -319,6 +356,10 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
         resetLatencyWorkflow,
         addStream,
         switchStream,
+        removeStream,
+        toggleStream,
+        renameStream,
+        updateLinkNote,
         adjustTimer, resetTimer, forceFinish
     };
 };

@@ -30,7 +30,14 @@ function App() {
     const escalationAudioRef = useRef(null);
 
     const { playReminder, playAlarm, playPeep } = useAudio(settings);
+    const [isAlerting, setIsAlerting] = useState(false);
     const isReviewing = isEnforced || showManualReview;
+
+    const triggerNotify = useCallback((scope) => {
+        playReminder(scope);
+        setIsAlerting(true);
+        setTimeout(() => setIsAlerting(false), 2400); // 3 repeats of 0.8s pulse
+    }, [playReminder]);
 
     const {
         timeLeft, setTimeLeft,
@@ -44,6 +51,9 @@ function App() {
         addStream,
         switchStream,
         removeStream,
+        toggleStream,
+        renameStream,
+        updateLinkNote,
         adjustTimer, resetTimer, forceFinish
     } = useTimer(settings, setSettings, playPeep, playAlarm, setIsEnforced);
 
@@ -62,13 +72,20 @@ function App() {
 
     useEffect(() => {
         if (window.electron) {
-            window.electron.setKiosk(Boolean(isEnforced && settings.enforcement?.kioskMode));
+            const isIdle = !isActive && !isReviewing;
+            const useKiosk = 
+                (isEnforced && Array.isArray(settings.enforcement?.kioskMode) && settings.enforcement.kioskMode.includes('review')) || 
+                (isActive && Array.isArray(settings.enforcement?.kioskMode) && settings.enforcement.kioskMode.includes('active')) ||
+                (isIdle && Array.isArray(settings.enforcement?.kioskMode) && settings.enforcement.kioskMode.includes('idle'));
+            window.electron.setKiosk(Boolean(useKiosk));
         }
-    }, [isEnforced, settings.enforcement?.kioskMode]);
+    }, [isEnforced, isActive, isReviewing, settings.enforcement?.kioskMode]);
 
     useEffect(() => {
         const activeTheme = settings.themeId === 'custom' ? settings.customTheme : (THEMES.find(t => t.id === settings.themeId) || THEMES[0]);
         const root = document.documentElement;
+        
+        // Base mapping
         root.style.setProperty('--bg-color', activeTheme.bg);
         root.style.setProperty('--accent-color', activeTheme.accent);
         root.style.setProperty('--accent-contrast', activeTheme.contrast);
@@ -79,6 +96,24 @@ function App() {
         root.style.setProperty('--text-main', activeTheme.text);
         root.style.setProperty('--text-data', activeTheme.dataText);
         root.style.setProperty('--text-dim', activeTheme.dim || 'rgba(255,255,255,0.4)');
+
+        // Derived / App specific mapping
+        const isLightTheme = activeTheme.id === 'paper' || activeTheme.id === 'nordic' || activeTheme.id === 'champagne';
+        const tintBase = isLightTheme ? '0, 0, 0' : '255, 255, 255';
+        
+        root.style.setProperty('--border-color', `rgba(${tintBase}, 0.08)`);
+        root.style.setProperty('--border-light', `rgba(${tintBase}, 0.15)`);
+        root.style.setProperty('--primary-hover', activeTheme.accent + 'dd');
+        root.style.setProperty('--primary-bg', activeTheme.accent + '20');
+        root.style.setProperty('--surface-hover', `rgba(${tintBase}, 0.05)`);
+        root.style.setProperty('--tint-low', `rgba(${tintBase}, 0.03)`);
+        root.style.setProperty('--tint-medium', `rgba(${tintBase}, 0.08)`);
+        
+        // Mode specific constant overrides
+        root.style.setProperty('--success-color', '#10B981');
+        root.style.setProperty('--success-bg', 'rgba(16, 185, 129, 0.1)');
+        root.style.setProperty('--danger-color', '#EF4444');
+        root.style.setProperty('--danger-bg', 'rgba(239, 68, 68, 0.1)');
     }, [settings.themeId, settings.customTheme]);
 
     const handleEnforce = useCallback(() => {
@@ -107,11 +142,16 @@ function App() {
             if (!enabled || !config?.enabled || !Number.isFinite(config.interval) || config.interval <= 0) {
                 return;
             }
-            const timerId = window.setInterval(() => playReminder(scope), config.interval * 1000);
+            const timerId = window.setInterval(() => triggerNotify(scope), config.interval * 1000);
             timers.push(timerId);
         };
 
-        const isSonicOn = isEnforced && settings.enforcement?.soundCrescendo;
+        const isIdle = !isActive && !isReviewing;
+        const isSonicOn = Array.isArray(settings.enforcement?.soundCrescendo) && (
+            (isEnforced && settings.enforcement.soundCrescendo.includes('review')) || 
+            (isActive && settings.enforcement.soundCrescendo.includes('active')) ||
+            (isIdle && settings.enforcement.soundCrescendo.includes('idle'))
+        );
         scheduleReminder('idle', !isActive && !isReviewing && !showArchives && !showSettingsModal && !showCustomModal && !showToneModal);
         scheduleReminder('focus', isActive && !isReviewing && !showArchives);
         scheduleReminder('review', isReviewing && !showArchives && !isSonicOn);
@@ -132,8 +172,14 @@ function App() {
     ]);
 
     // Enforcement level escalation — increments every 30s while in review
+    // Enforcement level escalation — increments every 30s while in review, active, or idle mode if selected
     useEffect(() => {
-        if (isReviewing) {
+        const isIdle = !isActive && !isReviewing;
+        const isEclipseIdle = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('idle') && isIdle;
+        const isEclipseActive = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('active') && isActive;
+        const isEclipseReview = Array.isArray(settings.enforcement?.desktopEclipse) && settings.enforcement.desktopEclipse.includes('review') && isReviewing;
+        
+        if (isReviewing || isEclipseActive || isEclipseIdle) {
             enforcementStartRef.current = Date.now();
             setEnforcementLevel(1);
             if (window.electron) window.electron.setEclipseLevel(1);
@@ -151,11 +197,16 @@ function App() {
             if (window.electron) window.electron.setEclipseLevel(0);
             enforcementStartRef.current = null;
         }
-    }, [isReviewing]);
+    }, [isReviewing, isActive, settings.enforcement?.desktopEclipse, settings.reminders?.review?.interval]);
 
     // Aggressive Protocol: Sonic Escalation — plays escalating tones during enforcement
     useEffect(() => {
-        if (!isEnforced || !settings.enforcement?.soundCrescendo || enforcementLevel < 1) {
+        const isIdle = !isActive && !isReviewing;
+        const isSonicIdle = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('idle') && isIdle;
+        const isSonicActive = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('active') && isActive;
+        const isSonicReview = Array.isArray(settings.enforcement?.soundCrescendo) && settings.enforcement.soundCrescendo.includes('review') && isEnforced;
+        
+        if ((!isSonicReview && !isSonicActive && !isSonicIdle) || enforcementLevel < 1) {
             return undefined;
         }
 
@@ -220,7 +271,7 @@ function App() {
         }
 
         return cleanup;
-    }, [enforcementLevel, isEnforced, settings.enforcement?.soundCrescendo]);
+    }, [enforcementLevel, isEnforced, isActive, isReviewing, settings.enforcement?.soundCrescendo]);
 
 
 
@@ -337,9 +388,12 @@ function App() {
         }
         setIsActive(false);
     };
+    const isTimerRunning = isActive || (settings.sessionMode === 'latencyBlocks' && Object.values(ledger?.streams || {}).some(s => s.isRunning));
 
     return (
-        <div className="min-h-screen p-8 overflow-y-auto relative pt-14 text-main">
+        <div className="h-screen w-screen overflow-hidden flex flex-col font-sans selection:bg-app-primary selection:text-white bg-app-bg bg-grid-pattern relative text-app-text">
+            <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-app-primary/10 rounded-full blur-[120px] pointer-events-none -translate-y-1/2 z-0"></div>
+            <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-app-success/5 rounded-full blur-[100px] pointer-events-none translate-y-1/2 z-0"></div>
             {/* Aggressive Protocols: Sonic Escalation, Desktop Eclipse */}
             {isEnforced && (
                 <EnforcerOverlay
@@ -348,10 +402,14 @@ function App() {
                 />
             )}
             <Header
+                showArchives={showArchives}
+                isReviewing={isReviewing}
+                isTimerRunning={isTimerRunning}
                 setShowArchives={setShowArchives}
                 setShowSettingsModal={setShowSettingsModal}
                 isMaximized={isMaximized}
                 settings={settings}
+                setSettings={setSettings}
                 setArchiveData={setArchiveData}
             />
             {showSettingsModal && (
@@ -396,6 +454,7 @@ function App() {
                     timeLeft={timeLeft}
                     isActive={isActive}
                     setIsActive={setIsActive}
+                    isAlerting={isAlerting}
                     formData={formData}
                     setFormData={setFormData}
                     ledger={ledger}
@@ -405,6 +464,9 @@ function App() {
                     addStream={addStream}
                     switchStream={switchStream}
                     removeStream={removeStream}
+                    toggleStream={toggleStream}
+                    renameStream={renameStream}
+                    updateLinkNote={updateLinkNote}
                     openManualReview={openManualReview}
                     adjustTimer={adjustTimer}
                     forceFinish={forceFinish}

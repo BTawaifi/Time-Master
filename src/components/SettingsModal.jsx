@@ -17,7 +17,7 @@ import {
   Clock3,
   TimerReset,
 } from "lucide-react";
-import { SESSION_MODES, THEMES } from "../constants";
+import { SESSION_MODES, THEMES, BACKGROUND_EFFECTS } from "../constants";
 
 export const SettingsModal = ({
   settings,
@@ -30,12 +30,12 @@ export const SettingsModal = ({
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-[var(--bg-color)]/95 backdrop-blur-xl">
-      <div className="glass-card max-w-4xl w-full p-8 space-y-8 border border-white/10 overflow-y-auto max-h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] text-main">
+      <div className="glass-card max-w-4xl w-full p-8 space-y-8 border border-app-border overflow-y-auto max-h-[90vh] shadow-[0_0_100px_rgba(0,0,0,0.5)] text-main">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-black uppercase tracking-tighter flex items-center gap-3">
             <Settings size={28} className="accent-text" /> Configuration
           </h2>
-          <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+          <div className="flex bg-app-tintLow rounded-lg p-1 border border-app-border">
             <button
               onClick={() => setSettingsTab("system")}
               className={`px-4 py-2 rounded-md text-[10px] font-black uppercase transition-all ${settingsTab === "system" ? "accent-bg accent-contrast-text" : "opacity-40 hover:opacity-100"}`}
@@ -51,7 +51,7 @@ export const SettingsModal = ({
           </div>
           <button
             onClick={() => setShowSettingsModal(false)}
-            className="p-2 hover:bg-white/10 rounded-full transition-all"
+            className="p-2 hover:bg-app-tintMed rounded-full transition-all"
           >
             <X size={24} />
           </button>
@@ -61,7 +61,7 @@ export const SettingsModal = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12 animate-in fade-in slide-in-from-left-4 duration-300">
             <div className="space-y-8">
               <section className="space-y-4">
-                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">
+                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-app-border pb-2">
                   Session Engine
                 </h3>
                 <div className="grid grid-cols-1 gap-3">
@@ -82,7 +82,7 @@ export const SettingsModal = ({
                             sessionMode: mode.id,
                           }))
                         }
-                        className={`w-full p-4 rounded-2xl border transition-all text-left ${isSelected ? "accent-bg accent-contrast-text border-transparent" : "border-white/10 hover:bg-white/5"}`}
+                        className={`w-full p-4 rounded-2xl border transition-all text-left ${isSelected ? "accent-bg accent-contrast-text border-transparent" : "border-app-border hover:bg-app-tintLow"}`}
                       >
                         <div className="flex items-start gap-3">
                           <Icon size={18} className="shrink-0 mt-0.5" />
@@ -111,7 +111,7 @@ export const SettingsModal = ({
                     if (path)
                       setSettings((prev) => ({ ...prev, logFilePath: path }));
                   }}
-                  className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all flex items-center justify-between group"
+                  className="w-full py-3 px-4 rounded-xl border border-app-border hover:bg-app-tintLow transition-all flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3">
                     <FileJson size={16} className="accent-text" />
@@ -133,7 +133,7 @@ export const SettingsModal = ({
                   onClick={() =>
                     window.electron?.openLogsFolder(settings.logFilePath)
                   }
-                  className="w-full py-3 px-4 rounded-xl border border-white/10 hover:bg-white/5 transition-all flex items-center justify-between group"
+                  className="w-full py-3 px-4 rounded-xl border border-app-border hover:bg-app-tintLow transition-all flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3">
                     <FolderOpen size={16} className="accent-text" />
@@ -149,7 +149,7 @@ export const SettingsModal = ({
               </section>
 
               <section className="space-y-4">
-                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2 pt-4">
+                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-app-border pb-2 pt-4">
                   Window Protocol
                 </h3>
                 <button
@@ -159,7 +159,7 @@ export const SettingsModal = ({
                       stayOnTop: !prev.stayOnTop,
                     }))
                   }
-                  className={`w-full py-3 px-4 rounded-xl border transition-all flex items-center justify-between group ${settings.stayOnTop ? "accent-bg accent-contrast-text border-transparent" : "border-white/10 hover:bg-white/5"}`}
+                  className={`w-full py-3 px-4 rounded-xl border transition-all flex items-center justify-between group ${settings.stayOnTop ? "accent-bg accent-contrast-text border-transparent" : "border-app-border hover:bg-app-tintLow"}`}
                 >
                   <div className="flex items-center gap-3">
                     <Layers size={16} />
@@ -168,10 +168,10 @@ export const SettingsModal = ({
                     </span>
                   </div>
                   <div
-                    className={`w-8 h-4 rounded-full relative transition-colors ${settings.stayOnTop ? "bg-white/20" : "bg-white/5"}`}
+                    className={`w-8 h-4 rounded-full relative transition-colors ${settings.stayOnTop ? "bg-white/20" : "bg-app-tintLow"}`}
                   >
                     <div
-                      className={`absolute top-1 w-2 h-2 rounded-full transition-all ${settings.stayOnTop ? "right-1 bg-white" : "left-1 bg-white/20"}`}
+                      className={`absolute top-1 w-2 h-2 rounded-full transition-all ${settings.stayOnTop ? "right-1 bg-white" : "left-1 bg-app-tintMed"}`}
                     ></div>
                   </div>
                 </button>
@@ -182,7 +182,7 @@ export const SettingsModal = ({
                       autoMinimize: !prev.autoMinimize,
                     }))
                   }
-                  className={`w-full py-3 px-4 rounded-xl border transition-all flex items-center justify-between group ${settings.autoMinimize ? "accent-bg accent-contrast-text border-transparent" : "border-white/10 hover:bg-white/5"}`}
+                  className={`w-full py-3 px-4 rounded-xl border transition-all flex items-center justify-between group ${settings.autoMinimize ? "accent-bg accent-contrast-text border-transparent" : "border-app-border hover:bg-app-tintLow"}`}
                 >
                   <div className="flex items-center gap-3">
                     <Minimize2 size={16} />
@@ -201,10 +201,10 @@ export const SettingsModal = ({
               </section>
 
               <section className="space-y-4">
-                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2 pt-4">
+                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-app-border pb-2 pt-4">
                   Visual Style
                 </h3>
-                <div className="grid grid-cols-2 gap-2 text-main">
+                <div className="grid grid-cols-2 gap-2 text-main mb-6">
                   {THEMES.map((t) => (
                     <button
                       key={t.id}
@@ -212,7 +212,7 @@ export const SettingsModal = ({
                         setSettings((prev) => ({ ...prev, themeId: t.id }));
                         if (t.id === "custom") setShowCustomModal(true);
                       }}
-                      className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all ${settings.themeId === t.id ? "accent-border accent-bg accent-contrast-text" : "border-white/5 hover:bg-white/5 opacity-40"}`}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all ${settings.themeId === t.id ? "accent-border accent-bg accent-contrast-text" : "border-app-border hover:bg-app-tintLow opacity-40"}`}
                     >
                       {t.name}{" "}
                       {t.id === "custom" && (
@@ -221,11 +221,26 @@ export const SettingsModal = ({
                     </button>
                   ))}
                 </div>
+
+                <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-app-border pb-2 pt-4">
+                  Background Kinetic Effect
+                </h3>
+                <div className="grid grid-cols-2 gap-2 text-main">
+                  {BACKGROUND_EFFECTS.map((fx) => (
+                    <button
+                      key={fx.id}
+                      onClick={() => setSettings((prev) => ({ ...prev, bgEffect: fx.id }))}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-bold border transition-all ${settings.bgEffect === fx.id ? "accent-border accent-bg accent-contrast-text" : "border-app-border hover:bg-app-tintLow opacity-40"}`}
+                    >
+                      {fx.name}
+                    </button>
+                  ))}
+                </div>
               </section>
             </div>
 
             <div className="space-y-6">
-              <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2">
+              <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-app-border pb-2">
                 Reminder Protocols
               </h3>
               <div className="space-y-6">
@@ -242,7 +257,7 @@ export const SettingsModal = ({
                   return (
                     <div
                       key={scope}
-                      className="glass-card p-5 border-white/5 space-y-4"
+                      className="glass-card p-5 border-app-border space-y-4"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
@@ -260,7 +275,7 @@ export const SettingsModal = ({
                         </div>
                         <button
                           onClick={() => upd({ enabled: !config.enabled })}
-                          className={`w-8 h-4 rounded-full relative transition-colors ${config.enabled ? "accent-bg" : "bg-white/5"}`}
+                          className={`w-8 h-4 rounded-full relative transition-colors ${config.enabled ? "accent-bg" : "bg-app-tintLow"}`}
                         >
                           <div
                             className={`absolute top-1 w-2 h-2 rounded-full transition-all ${config.enabled ? "right-1 bg-white" : "left-1 bg-white/20"}`}
@@ -284,7 +299,7 @@ export const SettingsModal = ({
                                     ),
                                   })
                                 }
-                                className="p-1 hover:bg-white/5 rounded border border-white/10"
+                                className="p-1 hover:bg-app-tintLow rounded border border-app-border"
                               >
                                 <Minus size={10} />
                               </button>
@@ -305,7 +320,7 @@ export const SettingsModal = ({
                             <span className="text-[10px] font-bold opacity-40 uppercase">
                               Sound Profile
                             </span>
-                            <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">
+                            <div className="flex bg-app-tintLow rounded-lg p-1 border border-app-border">
                               <button
                                 onClick={() => upd({ mode: "stochastic" })}
                                 className={`px-2 py-1 rounded text-[8px] font-black transition-all ${config.mode === "stochastic" ? "accent-bg accent-contrast-text" : "opacity-40"}`}
@@ -348,7 +363,7 @@ export const SettingsModal = ({
             </div>
 
             <div className="space-y-6">
-              <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-white/5 pb-2 text-red-400">
+              <h3 className="text-[10px] font-black tracking-widest opacity-30 uppercase border-b border-app-border pb-2 text-red-400">
                 Physical & Visual Constraints
               </h3>
               {[
@@ -360,38 +375,45 @@ export const SettingsModal = ({
                 {
                   id: "kioskMode",
                   label: "Kiosk Lock",
-                  desc: "Uses Electron kiosk mode during review enforcement.",
+                  desc: "Uses Electron kiosk mode to hijack the screen.",
                 },
               ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      enforcement: {
-                        ...prev.enforcement,
-                        [opt.id]: !prev.enforcement[opt.id],
-                      },
-                    }))
-                  }
-                  className={`w-full py-4 px-5 rounded-xl border transition-all flex items-center justify-between group ${settings.enforcement[opt.id] ? "bg-red-500/10 border-red-500/50" : "border-white/10 hover:bg-white/5"}`}
-                >
-                  <div className="text-left">
-                    <div
-                      className={`text-xs font-bold uppercase ${settings.enforcement[opt.id] ? "text-red-400" : "opacity-60"}`}
-                    >
-                      {opt.label}
+                <div key={opt.id} className="w-full py-4 px-5 rounded-xl border border-app-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <div className="text-xs font-bold uppercase text-main">
+                        {opt.label}
+                      </div>
+                      <div className="text-[9px] opacity-40">{opt.desc}</div>
                     </div>
-                    <div className="text-[9px] opacity-40">{opt.desc}</div>
                   </div>
-                  <div
-                    className={`w-8 h-4 rounded-full relative transition-colors ${settings.enforcement[opt.id] ? "bg-red-500" : "bg-white/5"}`}
-                  >
-                    <div
-                      className={`absolute top-1 w-2 h-2 rounded-full transition-all ${settings.enforcement[opt.id] ? "right-1 bg-white" : "left-1 bg-white/20"}`}
-                    ></div>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {['idle', 'active', 'review'].map(phase => {
+                        const currentArr = Array.isArray(settings.enforcement[opt.id]) ? settings.enforcement[opt.id] : [];
+                        const isSelected = currentArr.includes(phase);
+                        return (
+                          <button 
+                            key={phase} 
+                            onClick={() => {
+                                setSettings(prev => {
+                                    const nextArr = isSelected ? currentArr.filter(p => p !== phase) : [...currentArr, phase];
+                                    return {
+                                        ...prev,
+                                        enforcement: {
+                                            ...prev.enforcement,
+                                            [opt.id]: nextArr
+                                        }
+                                    };
+                                });
+                            }}
+                            className={`py-2 text-[10px] font-bold uppercase rounded border transition-all ${isSelected ? "bg-red-500/20 border-red-500 text-red-500" : "bg-app-tintLow border-app-border text-app-muted hover:border-red-500/50"}`}
+                          >
+                             {phase === 'active' ? 'Active' : phase === 'idle' ? 'Idle' : 'Review'}
+                          </button>
+                        );
+                    })}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
 
@@ -408,38 +430,45 @@ export const SettingsModal = ({
                 {
                   id: "mantraGate",
                   label: "Mantra Gate",
-                  desc: "Requires retyping the goal before save controls unlock.",
+                  desc: "Requires retyping the goal.",
                 },
               ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() =>
-                    setSettings((prev) => ({
-                      ...prev,
-                      enforcement: {
-                        ...prev.enforcement,
-                        [opt.id]: !prev.enforcement[opt.id],
-                      },
-                    }))
-                  }
-                  className={`w-full py-4 px-5 rounded-xl border transition-all flex items-center justify-between group ${settings.enforcement[opt.id] ? "bg-red-500/10 border-red-500/50" : "border-white/10 hover:bg-white/5"}`}
-                >
-                  <div className="text-left">
-                    <div
-                      className={`text-xs font-bold uppercase ${settings.enforcement[opt.id] ? "text-red-400" : "opacity-60"}`}
-                    >
-                      {opt.label}
+                <div key={opt.id} className="w-full py-4 px-5 rounded-xl border border-app-border space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-left">
+                      <div className="text-xs font-bold uppercase text-main">
+                        {opt.label}
+                      </div>
+                      <div className="text-[9px] opacity-40">{opt.desc}</div>
                     </div>
-                    <div className="text-[9px] opacity-40">{opt.desc}</div>
                   </div>
-                  <div
-                    className={`w-8 h-4 rounded-full relative transition-colors ${settings.enforcement[opt.id] ? "bg-red-500" : "bg-white/5"}`}
-                  >
-                    <div
-                      className={`absolute top-1 w-2 h-2 rounded-full transition-all ${settings.enforcement[opt.id] ? "right-1 bg-white" : "left-1 bg-white/20"}`}
-                    ></div>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {['idle', 'active', 'review'].map(phase => {
+                        const currentArr = Array.isArray(settings.enforcement[opt.id]) ? settings.enforcement[opt.id] : [];
+                        const isSelected = currentArr.includes(phase);
+                        return (
+                          <button 
+                            key={phase} 
+                            onClick={() => {
+                                setSettings(prev => {
+                                    const nextArr = isSelected ? currentArr.filter(p => p !== phase) : [...currentArr, phase];
+                                    return {
+                                        ...prev,
+                                        enforcement: {
+                                            ...prev.enforcement,
+                                            [opt.id]: nextArr
+                                        }
+                                    };
+                                });
+                            }}
+                            className={`py-2 text-[10px] font-bold uppercase rounded border transition-all ${isSelected ? "bg-red-500/20 border-red-500 text-red-500" : "bg-app-tintLow border-app-border text-app-muted hover:border-red-500/50"}`}
+                          >
+                             {phase === 'active' ? 'Active' : phase === 'idle' ? 'Idle' : 'Review'}
+                          </button>
+                        );
+                    })}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -447,7 +476,7 @@ export const SettingsModal = ({
 
         <button
           onClick={() => setShowSettingsModal(false)}
-          className="w-full py-5 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest shadow-[0_0_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all"
+          className="w-full py-5 accent-bg accent-contrast-text rounded-2xl font-black uppercase tracking-widest shadow-[0_0_40px_rgba(0,0,0,0.3)] active:scale-95 transition-all text-app-primaryContrast"
         >
           Synchronize Protocols
         </button>

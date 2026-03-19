@@ -112,8 +112,9 @@ export const ArchiveView = ({
   );
 
   return (
-    <div className="max-w-5xl mx-auto space-y-10">
-      <header className="flex items-center justify-between flex-wrap gap-8 border-b border-white/5 pb-8">
+    <main className="flex-1 w-full overflow-y-auto px-6 py-8 no-scrollbar">
+      <div className="w-full max-w-[1400px] mx-auto space-y-10 pb-20">
+      <header className="flex items-center justify-between flex-wrap gap-8 border-b border-app-border pb-8">
         <button
           onClick={() => {
             setArchiveError("");
@@ -126,7 +127,7 @@ export const ArchiveView = ({
           <ArrowRight className="rotate-180" size={16} /> BACK TO LAB
         </button>
         <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex items-center bg-white/5 px-5 py-3 rounded-2xl border border-white/10 text-main">
+          <div className="flex items-center bg-app-tintLow px-5 py-3 rounded-2xl border border-app-border text-main">
             <Calendar size={14} className="accent-text mr-4 opacity-40" />
             <input
               type="date"
@@ -178,17 +179,17 @@ export const ArchiveView = ({
             return (
               <div
                 key={log.id}
-                className={`glass-card overflow-hidden border transition-all duration-500 relative group ${log.shame ? 'shame-entry' : ''} ${isExpanded ? "border-accent-color/30 shadow-2xl bg-white/[0.02]" : "border-white/10 hover:border-white/20"}`}
+                className={`glass-card overflow-hidden border transition-all duration-500 relative group ${log.shame ? 'shame-entry' : ''} ${isExpanded ? "border-accent-color/30 shadow-2xl bg-app-tintLow/10" : "border-app-border hover:border-accent-color/20"}`}
               >
                 <div
                   className={`absolute left-0 top-0 w-1.5 h-full transition-colors duration-500 ${won ? "bg-green-500/40" : "bg-red-500/40"}`}
                 ></div>
                 <div
                   onClick={() => !editingId && toggleExpand(log.id)}
-                  className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${isExpanded ? "bg-white/5 border-b border-white/5" : "hover:bg-white/[0.02]"}`}
+                  className={`p-5 flex items-center justify-between cursor-pointer transition-colors ${isExpanded ? "bg-app-tintLow border-b border-app-border" : "hover:bg-app-tintLow/40"}`}
                 >
                   <div className="flex items-center gap-8 pl-4">
-                    <div className="flex flex-col items-center justify-center min-w-[80px] border-r border-white/5 pr-8">
+                    <div className="flex flex-col items-center justify-center min-w-[80px] border-r border-app-border pr-8">
                       <span className="text-[10px] font-black opacity-30 uppercase tracking-tighter text-main">
                         {log.date.split("-").slice(1).join("/")}
                       </span>
@@ -588,7 +589,7 @@ export const ArchiveView = ({
                         </div>
                       </div>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-white/5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-app-border">
                       <div className="flex items-start gap-4">
                         <Flag size={18} className="accent-text mt-1 shrink-0" />
                         <div className="space-y-1">
@@ -648,6 +649,7 @@ export const ArchiveView = ({
           })
         )}
       </div>
-    </div>
+      </div>
+    </main>
   );
 };
