@@ -198,6 +198,9 @@ const getLocalDateKey = (date) => new Date(date.getTime() - date.getTimezoneOffs
 
 if (app) {
     app.whenReady().then(async () => {
+        if (process.platform === 'win32') {
+            app.setAppUserModelId('com.timemaster.app');
+        }
         hasSingleInstanceLock = app.requestSingleInstanceLock();
         if (!hasSingleInstanceLock) { app.quit(); return; }
         app.on('second-instance', () => showMainWindow());
