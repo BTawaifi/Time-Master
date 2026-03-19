@@ -7,6 +7,7 @@
     "start": "concurrently \"vite --port 5174\" \"wait-on tcp:5174 && electron .\"",
     "build": "vite build",
     "compile": "npm run build && electron-builder",
+    "compile:mac": "npm run build && electron-builder --mac",
     "test": "node --experimental-test-coverage --test src/__tests__/*.test.mjs"
   },
   "build": {
@@ -25,6 +26,12 @@
       "target": [
         "nsis",
         "portable"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
       ]
     }
   },
