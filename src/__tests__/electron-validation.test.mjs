@@ -18,7 +18,7 @@ test('isBoolean only accepts literal booleans', () => {
   assert.equal(isBoolean(null), false);
 });
 
-test('normalizeEnforcementConfig keeps known flags and defaults invalid input to false', () => {
+test('normalizeEnforcementConfig keeps known flags and defaults invalid input to empty arrays, converting true to ["review"]', () => {
   assert.deepEqual(
     normalizeEnforcementConfig({
       desktopEclipse: true,
@@ -28,18 +28,18 @@ test('normalizeEnforcementConfig keeps known flags and defaults invalid input to
       extraFlag: true,
     }),
     {
-      desktopEclipse: true,
-      soundCrescendo: false,
-      mantraGate: false,
-      kioskMode: true,
+      desktopEclipse: ['review'],
+      soundCrescendo: [],
+      mantraGate: [],
+      kioskMode: ['review'],
     },
   );
 
   assert.deepEqual(normalizeEnforcementConfig(null), {
-    desktopEclipse: false,
-    soundCrescendo: false,
-    mantraGate: false,
-    kioskMode: false,
+    desktopEclipse: [],
+    soundCrescendo: [],
+    mantraGate: [],
+    kioskMode: [],
   });
 });
 

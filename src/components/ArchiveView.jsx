@@ -235,18 +235,22 @@ export const ArchiveView = ({
                       </div>
                       {!isExpanded && (
                         <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
-                            <Star size={10} className="accent-text" />{" "}
-                            {log.focusDepth} Focus
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
-                            <Gem size={10} className="text-blue-400" />{" "}
-                            {log.utility} Value
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
-                            <Battery size={10} className="text-yellow-400" />{" "}
-                            {log.energyLevel} Energy
-                          </div>
+                          {log.sessionMode !== 'quickNote' && (
+                            <>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                                <Star size={10} className="accent-text" />{" "}
+                                {log.focusDepth} Focus
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                                <Gem size={10} className="text-blue-400" />{" "}
+                                {log.utility} Value
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                                <Battery size={10} className="text-yellow-400" />{" "}
+                                {log.energyLevel} Energy
+                              </div>
+                            </>
+                          )}
                           <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
                             <Flag size={10} className="accent-text" /> {sessionModeLabel}: {sessionSummary}
                           </div>
@@ -334,314 +338,425 @@ export const ArchiveView = ({
                 </div>
                 {isExpanded && (
                   <div className="p-8 space-y-10 animate-in fade-in slide-in-from-top-2 duration-500 text-main">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                    {log.sessionMode === 'quickNote' ? (
                       <div className="space-y-6">
                         <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
-                          <TargetIcon size={14} className="accent-text" />{" "}
-                          Pre-Commitment Goal
+                          <ClipboardCheck size={14} className="accent-text" />{" "}
+                          Saved Note Content
                         </div>
                         {editingId === log.id ? (
                           <textarea
-                            value={editFields.bet}
+                            value={editFields.output}
                             onChange={(e) =>
                               setEditFields({
                                 ...editFields,
-                                bet: e.target.value,
+                                output: e.target.value,
                               })
                             }
-                            className="input-field h-28 text-sm"
+                            className="input-field h-64 text-sm leading-relaxed"
                           />
                         ) : (
-                          <p className="italic text-xl font-light data-text leading-relaxed pl-4 border-l-2 border-accent-color/20">
-                            "{log.bet}"
-                          </p>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-1 gap-8">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 block">
-                            Activity Description
-                          </label>
-                          {editingId === log.id ? (
-                            <input
-                              value={editFields.activity}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  activity: e.target.value,
-                                })
-                              }
-                              className="input-field py-3"
-                            />
-                          ) : (
-                            <p className="text-base font-bold data-text">
-                              {log.activity}
-                            </p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 block">
-                            Verified Output
-                          </label>
-                          {editingId === log.id ? (
-                            <input
-                              value={editFields.output}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  output: e.target.value,
-                                })
-                              }
-                              className="input-field py-3"
-                            />
-                          ) : (
-                            <p className="text-sm font-mono data-text bg-black/20 p-3 rounded-lg border border-white/5">
+                          <div className="glass-card p-8 border-white/5 bg-black/20">
+                            <p className="text-lg font-light data-text leading-relaxed whitespace-pre-wrap">
                               {log.output}
                             </p>
-                          )}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 pt-4 border-t border-white/5 opacity-40">
+                           <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
+                             <Calendar size={12} /> Captured on {log.timestamp}
+                           </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                      <div className="glass-card p-6 border-white/5 space-y-4">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
-                          <Flag size={14} /> Session Engine
-                        </div>
-                        <div className="space-y-3">
-                          <div className="text-sm font-bold accent-text">
-                            {sessionModeLabel}
-                          </div>
-                          {sessionDetails.map(([label, value]) => (
-                            <div key={label} className="flex items-center justify-between gap-3 text-[11px]">
-                              <span className="opacity-40 uppercase tracking-wide">{label}</span>
-                              <span className="text-right data-text">{value}</span>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                          <div className="space-y-6">
+                            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
+                              <TargetIcon size={14} className="accent-text" />{" "}
+                              Pre-Commitment Goal
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="glass-card p-6 border-white/5 space-y-4">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
-                          <BrainCircuit size={14} /> Metrics
-                        </div>
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span>FOCUS DEPTH</span>
-                            <span className="accent-text">
-                              {editingId === log.id
-                                ? editFields.focusDepth
-                                : log.focusDepth}
-                              /10
-                            </span>
-                          </div>
-                          {editingId === log.id ? (
-                            <input
-                              type="range"
-                              min="1"
-                              max="10"
-                              value={editFields.focusDepth}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  focusDepth: parseInt(e.target.value),
-                                })
-                              }
-                              className="w-full accent-accent-color"
-                            />
-                          ) : (
-                            <ProgressBar value={log.focusDepth} colorClass="accent-bg" />
-                          )}
-                          <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span>SESSION VALUE</span>
-                            <span className="text-blue-400">
-                              {editingId === log.id
-                                ? editFields.utility
-                                : log.utility}
-                              /10
-                            </span>
-                          </div>
-                          {editingId === log.id ? (
-                            <input
-                              type="range"
-                              min="1"
-                              max="10"
-                              value={editFields.utility}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  utility: parseInt(e.target.value),
-                                })
-                              }
-                              className="w-full accent-accent-color"
-                            />
-                          ) : (
-                            <ProgressBar value={log.utility} colorClass="bg-blue-400" />
-                          )}
-                          <div className="flex items-center justify-between text-[10px] font-bold">
-                            <span>MENTAL ENERGY</span>
-                            <span className="text-yellow-400">
-                              {editingId === log.id
-                                ? editFields.energyLevel
-                                : log.energyLevel}
-                              /10
-                            </span>
-                          </div>
-                          {editingId === log.id ? (
-                            <input
-                              type="range"
-                              min="1"
-                              max="10"
-                              value={editFields.energyLevel}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  energyLevel: parseInt(e.target.value),
-                                })
-                              }
-                              className="w-full accent-accent-color"
-                            />
-                          ) : (
-                            <ProgressBar value={log.energyLevel} colorClass="bg-yellow-400" />
-                          )}
-                        </div>
-                      </div>
-                      <div className="glass-card p-6 border-white/5 space-y-4 md:col-span-2">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
-                          <AlertCircle size={14} /> Resistance & Observations
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                          <div className="space-y-2">
-                            <label className="text-[8px] font-black opacity-30 uppercase">
-                              FRICTION NODES
-                            </label>
                             {editingId === log.id ? (
                               <textarea
-                                value={editFields.friction}
+                                value={editFields.bet}
                                 onChange={(e) =>
                                   setEditFields({
                                     ...editFields,
-                                    friction: e.target.value,
+                                    bet: e.target.value,
                                   })
                                 }
-                                className="input-field h-24 text-xs"
+                                className="input-field h-28 text-sm"
                               />
                             ) : (
-                              <p className="text-xs data-text leading-relaxed">
-                                {log.friction || "Zero friction recorded."}
+                              <p className="italic text-xl font-light data-text leading-relaxed pl-4 border-l-2 border-accent-color/20">
+                                "{log.bet}"
                               </p>
                             )}
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-[8px] font-black opacity-30 uppercase">
-                              SCIENTIFIC LESSON
-                            </label>
-                            {editingId === log.id ? (
-                              <textarea
-                                value={editFields.hypothesisNote}
-                                onChange={(e) =>
-                                  setEditFields({
-                                    ...editFields,
-                                    hypothesisNote: e.target.value,
-                                  })
-                                }
-                                className="input-field h-24 text-xs"
-                              />
-                            ) : (
-                              <p className="text-xs data-text leading-relaxed italic">
-                                {log.hypothesisNote || "No lesson derived."}
-                              </p>
-                            )}
+                          <div className="grid grid-cols-1 gap-8">
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 block">
+                                Activity Description
+                              </label>
+                              {editingId === log.id ? (
+                                <input
+                                  value={editFields.activity}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      activity: e.target.value,
+                                    })
+                                  }
+                                  className="input-field py-3"
+                                />
+                              ) : (
+                                <p className="text-base font-bold data-text">
+                                  {log.activity}
+                                </p>
+                              )}
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-[10px] font-black uppercase tracking-[0.2em] opacity-30 block">
+                                Verified Output
+                              </label>
+                              {editingId === log.id ? (
+                                <input
+                                  value={editFields.output}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      output: e.target.value,
+                                    })
+                                  }
+                                  className="input-field py-3"
+                                />
+                              ) : (
+                                <p className="text-sm font-mono data-text bg-black/20 p-3 rounded-lg border border-white/5">
+                                  {log.output}
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                    {log.sessionMode === "latencyBlocks" && (
-                      <div className="glass-card p-6 border-white/5 space-y-6">
-                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
-                          <Workflow size={14} className="accent-text" /> Multi-Stream Ledger Trace
-                        </div>
-                        <div className="space-y-8">
-                          {Object.values(log.sessionState.ledger?.streams || {}).map((stream) => (
-                            <div key={stream.id} className="space-y-4">
-                              <div className="flex items-center gap-3">
-                                <Layers size={14} className="accent-text" />
-                                <span className="text-xs font-black uppercase tracking-widest">{stream.name}</span>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                          <div className="glass-card p-6 border-white/5 space-y-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <Flag size={14} /> Session Engine
+                            </div>
+                            <div className="space-y-3">
+                              <div className="text-sm font-bold accent-text">
+                                {sessionModeLabel}
                               </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {stream.history.map((entry, index) => (
-                                  <div key={index} className="flex flex-col gap-2 bg-black/20 border border-white/5 p-4 rounded-xl transition-all hover:border-accent-color/20">
-                                    <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
-                                      <span className="opacity-40">{entry.block}</span>
-                                      <div className="flex items-center gap-2">
-                                        <span className="accent-text">{entry.duration}s</span>
-                                        <span className="opacity-80">{entry.label}</span>
-                                      </div>
-                                    </div>
-                                    {entry.comment && (
-                                      <div className="text-[11px] italic opacity-60 pl-2 border-l border-accent-color/30 leading-relaxed">
-                                        "{entry.comment}"
-                                      </div>
+                              {sessionDetails.map(([label, value]) => (
+                                <div key={label} className="flex items-center justify-between gap-3 text-[11px]">
+                                  <span className="opacity-40 uppercase tracking-wide">{label}</span>
+                                  <span className="text-right data-text">{value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="glass-card p-6 border-white/5 space-y-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <BrainCircuit size={14} /> Metrics
+                            </div>
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span>FOCUS DEPTH</span>
+                                <span className="accent-text">
+                                  {editingId === log.id
+                                    ? editFields.focusDepth
+                                    : log.focusDepth}
+                                  /10
+                                </span>
+                              </div>
+                              {editingId === log.id ? (
+                                <input
+                                  type="range"
+                                  min="1"
+                                  max="10"
+                                  value={editFields.focusDepth}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      focusDepth: parseInt(e.target.value),
+                                    })
+                                  }
+                                  className="w-full accent-accent-color"
+                                />
+                              ) : (
+                                <ProgressBar value={log.focusDepth} colorClass="accent-bg" />
+                              )}
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span>SESSION VALUE</span>
+                                <span className="text-blue-400">
+                                  {editingId === log.id
+                                    ? editFields.utility
+                                    : log.utility}
+                                  /10
+                                </span>
+                              </div>
+                              {editingId === log.id ? (
+                                <input
+                                  type="range"
+                                  min="1"
+                                  max="10"
+                                  value={editFields.utility}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      utility: parseInt(e.target.value),
+                                    })
+                                  }
+                                  className="w-full accent-accent-color"
+                                />
+                              ) : (
+                                <ProgressBar value={log.utility} colorClass="bg-blue-400" />
+                              )}
+                              <div className="flex items-center justify-between text-[10px] font-bold">
+                                <span>MENTAL ENERGY</span>
+                                <span className="text-yellow-400">
+                                  {editingId === log.id
+                                    ? editFields.energyLevel
+                                    : log.energyLevel}
+                                  /10
+                                </span>
+                              </div>
+                              {editingId === log.id ? (
+                                <input
+                                  type="range"
+                                  min="1"
+                                  max="10"
+                                  value={editFields.energyLevel}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      energyLevel: parseInt(e.target.value),
+                                    })
+                                  }
+                                  className="w-full accent-accent-color"
+                                />
+                              ) : (
+                                <ProgressBar value={log.energyLevel} colorClass="bg-yellow-400" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="glass-card p-6 border-white/5 space-y-4 md:col-span-2">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <AlertCircle size={14} /> Resistance & Observations
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <div className="space-y-2">
+                                <label className="text-[8px] font-black opacity-30 uppercase">
+                                  FRICTION NODES
+                                </label>
+                                {editingId === log.id ? (
+                                  <textarea
+                                    value={editFields.friction || ""}
+                                    onChange={(e) =>
+                                      setEditFields({
+                                        ...editFields,
+                                        friction: e.target.value,
+                                      })
+                                    }
+                                    className="input-field h-24 text-xs"
+                                  />
+                                ) : (
+                                  <p className="text-xs data-text leading-relaxed">
+                                    {log.friction || "Zero friction recorded."}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-[8px] font-black opacity-30 uppercase">
+                                  SCIENTIFIC LESSON
+                                </label>
+                                {editingId === log.id ? (
+                                  <textarea
+                                    value={editFields.hypothesisNote || ""}
+                                    onChange={(e) =>
+                                      setEditFields({
+                                        ...editFields,
+                                        hypothesisNote: e.target.value,
+                                      })
+                                    }
+                                    className="input-field h-24 text-xs"
+                                  />
+                                ) : (
+                                  <p className="text-xs data-text leading-relaxed italic">
+                                    {log.hypothesisNote || "No lesson derived."}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        {log.sessionMode === "latencyBlocks" && (
+                          <div className="glass-card p-6 border-white/5 space-y-6">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <Workflow size={14} className="accent-text" /> Multi-Stream Ledger Trace
+                            </div>
+                            <div className="space-y-8">
+                              {Object.values(log.sessionState.ledger?.streams || {}).map((stream) => (
+                                <div key={stream.id} className="space-y-4">
+                                  <div className="flex items-center gap-3">
+                                    <Layers size={14} className="accent-text" />
+                                    {editingId === log.id ? (
+                                        <input 
+                                            className="input-field py-1 px-2 text-xs" 
+                                            value={editFields.sessionState?.ledger?.streams?.[stream.id]?.name ?? stream.name} 
+                                            onChange={(e) => {
+                                                const newName = e.target.value;
+                                                setEditFields(prev => {
+                                                    const next = { ...prev };
+                                                    const nextSS = { ...(next.sessionState || {}) };
+                                                    const nextLedger = { ...(nextSS.ledger || {}) };
+                                                    const nextStreams = { ...(nextLedger.streams || {}) };
+                                                    const nextStream = { ...(nextStreams[stream.id] || stream) };
+                                                    
+                                                    nextStream.name = newName;
+                                                    nextStreams[stream.id] = nextStream;
+                                                    nextLedger.streams = nextStreams;
+                                                    nextSS.ledger = nextLedger;
+                                                    next.sessionState = nextSS;
+                                                    return next;
+                                                });
+                                            }}
+                                        />
+                                    ) : (
+                                        <span className="text-xs font-black uppercase tracking-widest">{stream.name}</span>
                                     )}
                                   </div>
-                                ))}
-                              </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {(editingId === log.id ? editFields.sessionState?.ledger?.streams?.[stream.id]?.history || stream.history : stream.history).map((entry, index) => (
+                                      <div key={index} className="flex flex-col gap-2 bg-black/20 border border-white/5 p-4 rounded-xl transition-all hover:border-accent-color/20">
+                                        <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
+                                          <span className="opacity-40">{entry.block}</span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="accent-text">{entry.duration}s</span>
+                                            {editingId === log.id ? (
+                                                <input 
+                                                    className="input-field py-1 px-2 text-xs w-24" 
+                                                    value={entry.label || ""}
+                                                    onChange={(e) => {
+                                                        const newLabel = e.target.value;
+                                                        setEditFields(prev => {
+                                                            const next = { ...prev };
+                                                            const nextSS = { ...(next.sessionState || {}) };
+                                                            const nextLedger = { ...(nextSS.ledger || {}) };
+                                                            const nextStreams = { ...(nextLedger.streams || {}) };
+                                                            const nextStream = { ...(nextStreams[stream.id] || stream) };
+                                                            
+                                                            const nextHistory = [...(nextStream.history || [])];
+                                                            nextHistory[index] = { ...nextHistory[index], label: newLabel };
+                                                            
+                                                            nextStream.history = nextHistory;
+                                                            nextStreams[stream.id] = nextStream;
+                                                            nextLedger.streams = nextStreams;
+                                                            nextSS.ledger = nextLedger;
+                                                            next.sessionState = nextSS;
+                                                            return next;
+                                                        });
+                                                    }}
+                                                />
+                                            ) : (
+                                                <span className="opacity-80">{entry.label}</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        {editingId === log.id ? (
+                                            <textarea
+                                                className="input-field h-16 text-xs p-2"
+                                                value={entry.comment || ""}
+                                                placeholder="Notes..."
+                                                onChange={(e) => {
+                                                    const newComment = e.target.value;
+                                                    setEditFields(prev => {
+                                                        const next = { ...prev };
+                                                        const nextSS = { ...(next.sessionState || {}) };
+                                                        const nextLedger = { ...(nextSS.ledger || {}) };
+                                                        const nextStreams = { ...(nextLedger.streams || {}) };
+                                                        const nextStream = { ...(nextStreams[stream.id] || stream) };
+                                                        
+                                                        const nextHistory = [...(nextStream.history || [])];
+                                                        nextHistory[index] = { ...nextHistory[index], comment: newComment };
+                                                        
+                                                        nextStream.history = nextHistory;
+                                                        nextStreams[stream.id] = nextStream;
+                                                        nextLedger.streams = nextStreams;
+                                                        nextSS.ledger = nextLedger;
+                                                        next.sessionState = nextSS;
+                                                        return next;
+                                                    });
+                                                }}
+                                            />
+                                        ) : entry.comment && (
+                                          <div className="text-[11px] italic opacity-60 pl-2 border-l border-accent-color/30 leading-relaxed">
+                                            "{entry.comment}"
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-app-border">
+                          <div className="flex items-start gap-4">
+                            <Flag size={18} className="accent-text mt-1 shrink-0" />
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase opacity-30">
+                                NEXT STRATEGIC TASK
+                              </span>
+                              {editingId === log.id ? (
+                                <input
+                                  value={editFields.nextStep || ""}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      nextStep: e.target.value,
+                                    })
+                                  }
+                                  className="input-field py-2"
+                                />
+                              ) : (
+                                <p className="text-sm font-bold data-text underline decoration-accent-color decoration-2 underline-offset-4">
+                                  {log.nextStep}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                            <Zap
+                              size={18}
+                              className="text-yellow-400 mt-1 shrink-0"
+                            />
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase opacity-30">
+                                MOMENTUM CATALYST
+                              </span>
+                              {editingId === log.id ? (
+                                <input
+                                  value={editFields.quickWin || ""}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      quickWin: e.target.value,
+                                    })
+                                  }
+                                  className="input-field py-2"
+                                />
+                              ) : (
+                                <p className="text-sm font-medium data-text opacity-60">
+                                  {log.quickWin || "None specified."}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-app-border">
-                      <div className="flex items-start gap-4">
-                        <Flag size={18} className="accent-text mt-1 shrink-0" />
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black uppercase opacity-30">
-                            NEXT STRATEGIC TASK
-                          </span>
-                          {editingId === log.id ? (
-                            <input
-                              value={editFields.nextStep}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  nextStep: e.target.value,
-                                })
-                              }
-                              className="input-field py-2"
-                            />
-                          ) : (
-                            <p className="text-sm font-bold data-text underline decoration-accent-color decoration-2 underline-offset-4">
-                              {log.nextStep}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-4">
-                        <Zap
-                          size={18}
-                          className="text-yellow-400 mt-1 shrink-0"
-                        />
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black uppercase opacity-30">
-                            MOMENTUM CATALYST
-                          </span>
-                          {editingId === log.id ? (
-                            <input
-                              value={editFields.quickWin}
-                              onChange={(e) =>
-                                setEditFields({
-                                  ...editFields,
-                                  quickWin: e.target.value,
-                                })
-                              }
-                              className="input-field py-2"
-                            />
-                          ) : (
-                            <p className="text-sm font-medium data-text opacity-60">
-                              {log.quickWin || "None specified."}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>

@@ -21,6 +21,7 @@ export const SessionReviewView = ({
   isEnforcedReview,
   handleAuthorization,
   handleSkip,
+  handleGoBack,
 }) => {
   const reviewMeta = getSessionReviewMeta({
     sessionMode: settings.sessionMode,
@@ -308,12 +309,20 @@ export const SessionReviewView = ({
               <i className="ph-bold ph-compass text-lg"></i> Save & Modify
             </button>
             {(!isEnforcedReview || !settings.enforcement?.kioskMode) && (
-              <button
-                onClick={handleSkip}
-                className="px-8 py-4 rounded-xl border border-app-danger/30 hover:border-app-danger text-app-danger font-bold text-xs tracking-widest uppercase transition-all flex items-center justify-center gap-2 bg-app-danger/5 hover:bg-app-danger/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] shrink-0"
-              >
-                <i className="ph-bold ph-trash text-lg"></i> Discard
-              </button>
+              <>
+                <button
+                  onClick={handleGoBack}
+                  className="px-8 py-4 rounded-xl border border-app-border hover:border-app-primary text-app-muted hover:text-main font-bold text-xs tracking-widest uppercase transition-all flex items-center justify-center gap-2 bg-app-tintLow hover:bg-app-tintMed shadow-[0_0_15px_rgba(255,255,255,0.05)] shrink-0"
+                >
+                  <i className="ph-bold ph-arrow-left text-lg"></i> Go Back
+                </button>
+                <button
+                  onClick={handleSkip}
+                  className="px-8 py-4 rounded-xl border border-app-danger/30 hover:border-app-danger text-app-danger font-bold text-xs tracking-widest uppercase transition-all flex items-center justify-center gap-2 bg-app-danger/5 hover:bg-app-danger/10 shadow-[0_0_15px_rgba(239,68,68,0.1)] shrink-0"
+                >
+                  <i className="ph-bold ph-trash text-lg"></i> Discard
+                </button>
+              </>
             )}
           </>
         )}

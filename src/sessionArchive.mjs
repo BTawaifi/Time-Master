@@ -2,6 +2,7 @@ const MODE_LABELS = {
   deepWork: 'Deep Work',
   pomodoro: 'Pomodoro',
   latencyBlocks: 'Neuro-Ledger',
+  quickNote: 'Quick Note',
 };
 
 const titleCase = (value) => value
@@ -25,6 +26,10 @@ export const getSessionModeLabel = (sessionMode) => MODE_LABELS[sessionMode] || 
 export const getSessionStateSummary = (log) => {
   const state = log?.sessionState || {};
 
+  if (log?.sessionMode === 'quickNote') {
+    return `Manual Note`;
+  }
+
   if (log?.sessionMode === 'pomodoro') {
     return `${titleCase(state.phase || 'focus')} • ${state.completedFocusSessions || 0} focus cycles`;
   }
@@ -39,6 +44,12 @@ export const getSessionStateSummary = (log) => {
 
 export const getSessionStateDetails = (log) => {
   const state = log?.sessionState || {};
+
+  if (log?.sessionMode === 'quickNote') {
+    return [
+      ['Note type', 'Quick Note']
+    ];
+  }
 
   if (log?.sessionMode === 'pomodoro') {
     return [

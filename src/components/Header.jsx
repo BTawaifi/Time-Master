@@ -6,6 +6,8 @@ export const Header = ({
   isTimerRunning,
   setShowArchives,
   setShowSettingsModal,
+  setShowQuickNotes,
+  showQuickNotes,
   isMaximized,
   settings,
   setSettings,
@@ -54,13 +56,16 @@ export const Header = ({
                 <i className="ph-bold ph-timer"></i> Pomodoro
             </button>
             <button onClick={() => selectMode('latencyBlocks')} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-colors ${settings.sessionMode === 'latencyBlocks' ? 'bg-app-tintMed text-main shadow-[0_0_10px_rgba(255,255,255,0.05)] border border-app-border' : 'text-app-muted hover:text-main'}`}>
-                <i className="ph-bold ph-circles-three text-app-primary"></i> Ledger
+                <i className="ph-bold ph-circles-three"></i> Ledger
             </button>
         </div>
 
         {/* Right controls */}
         <div className="flex items-center gap-4 no-drag">
             <div className="h-4 w-px bg-app-border"></div>
+            <button onClick={() => setShowQuickNotes(prev => !prev)} className={`transition-colors p-1.5 rounded-lg ${showQuickNotes ? 'bg-app-primary/20 text-app-primary' : 'text-app-muted hover:text-main hover:bg-app-tintLow'}`} title="Quick Notes">
+                <i className="ph ph-note-pencil text-lg"></i>
+            </button>
             <button onClick={async () => {
                 const logs = await window.electron?.getLogs(settings.logFilePath);
                 setArchiveData(logs || {});
