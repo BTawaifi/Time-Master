@@ -16,7 +16,7 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -43,5 +43,11 @@ jobs:
       - name: Package Mac
         if: matrix.os == 'macos-latest'
         run: npx electron-builder --mac -p always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: npx electron-builder --linux -p always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
