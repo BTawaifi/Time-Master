@@ -1,7 +1,7 @@
 {
   "name": "time-master",
-  "version": "2.0.8",
-  "description": "",
+  "version": "2.0.9",
+  "description": "High-performance productivity enforcer for deep work.",
   "main": "electron/main.js",
   "scripts": {
     "start": "concurrently \"vite --port 5174\" \"wait-on tcp:5174 && electron .\"",
@@ -50,7 +50,10 @@
     }
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "BTawaifi",
+    "email": "btawaifi@users.noreply.github.com"
+  },
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
