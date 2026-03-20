@@ -1,6 +1,6 @@
 {
   "name": "time-master",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "",
   "main": "electron/main.js",
   "scripts": {
@@ -13,6 +13,13 @@
   "build": {
     "appId": "com.timemaster.app",
     "productName": "Time Master",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "BTawaifi",
+        "repo": "Time-Master"
+      }
+    ],
     "directories": {
       "output": "release"
     },
