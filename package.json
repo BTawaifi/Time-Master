@@ -1,6 +1,6 @@
 {
   "name": "time-master",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "",
   "main": "electron/main.js",
   "scripts": {
