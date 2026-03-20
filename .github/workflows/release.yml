@@ -36,14 +36,12 @@ jobs:
 
       - name: Package Windows
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win -p always --config.mac.publish=github --config.win.publish=github
+        run: npx electron-builder --win -p always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_DRAFT: false
 
       - name: Package Mac
         if: matrix.os == 'macos-latest'
-        run: npx electron-builder --mac -p always --config.mac.publish=github --config.win.publish=github
+        run: npx electron-builder --mac -p always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EP_DRAFT: false
