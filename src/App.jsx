@@ -55,9 +55,12 @@ function App() {
         removeStream,
         toggleStream,
         renameStream,
+        endStream,
         updateLinkNote,
-        adjustTimer, resetTimer, forceFinish
-    } = useTimer(settings, setSettings, playPeep, playAlarm, setIsEnforced);
+        adjustTimer,
+        resetTimer,
+        forceFinish
+        } = useTimer(settings, setSettings, playPeep, playAlarm, setIsEnforced);
 
     // Sync enforcement config to Electron main process
     useEffect(() => {
@@ -527,6 +530,7 @@ function App() {
                     removeStream={removeStream}
                     toggleStream={toggleStream}
                     renameStream={renameStream}
+                    endStream={endStream}
                     updateLinkNote={updateLinkNote}
                     openManualReview={openManualReview}
                     adjustTimer={adjustTimer}
