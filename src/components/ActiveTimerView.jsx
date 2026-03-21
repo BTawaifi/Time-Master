@@ -334,6 +334,45 @@ export const ActiveTimerView = ({
                 )}
             </div>
         </div>
+
+        {/* End Stream Popup Modal */}
+        {showEndStreamPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-app-bg border border-app-border rounded-2xl p-6 shadow-glass w-[400px] flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-main flex items-center gap-2">
+                            <i className="ph-bold ph-stop-circle text-app-primary"></i> End Stream
+                        </h2>
+                        <button onClick={() => setShowEndStreamPopup(false)} className="text-app-muted hover:text-main">
+                            <i className="ph-bold ph-x"></i>
+                        </button>
+                    </div>
+                    <p className="text-sm text-app-muted">
+                        Are you sure you want to end this stream? It will be hidden from your active list and saved for your final session review.
+                    </p>
+                    <textarea 
+                        value={endStreamNotes}
+                        onChange={(e) => setEndStreamNotes(e.target.value)}
+                        placeholder="End stream review notes (optional)..."
+                        className="w-full h-24 bg-app-input border border-app-border rounded-xl p-3 text-sm text-main placeholder:text-app-muted focus:outline-none focus:border-app-primary/50 resize-none"
+                    />
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button 
+                            onClick={() => setShowEndStreamPopup(false)}
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-app-muted hover:text-main hover:bg-app-tintLow transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            onClick={handleEndStreamConfirm}
+                            className="px-4 py-2 rounded-xl text-sm font-bold bg-app-primary hover:bg-app-primaryHover text-app-primaryContrast shadow-neon-primary transition-colors"
+                        >
+                            End Stream
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </main>
   );
 };
