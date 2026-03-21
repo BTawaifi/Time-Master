@@ -46,10 +46,11 @@ function App() {
         isActive, setIsActive,
         pomodoroState,
         focusCount,
-        ledger,
+        ledger, setLedger,
         latencySessionTotal,
         advanceLatencyBlock,
         resetLatencyWorkflow,
+        resetStream,
         addStream,
         switchStream,
         removeStream,
@@ -516,12 +517,14 @@ function App() {
                     pomodoroState={pomodoroState}
                     focusCount={focusCount}
                     timeLeft={timeLeft}
+                    setTimeLeft={setTimeLeft}
                     isActive={isActive}
                     setIsActive={setIsActive}
                     isAlerting={isAlerting}
                     formData={formData}
                     setFormData={setFormData}
                     ledger={ledger}
+                    setLedger={setLedger}
                     latencySessionTotal={latencySessionTotal}
                     advanceLatencyBlock={advanceLatencyBlock}
                     resetLatencyWorkflow={resetLatencyWorkflow}

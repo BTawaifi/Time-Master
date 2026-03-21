@@ -66,6 +66,28 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
         setLatencySessionTotal(0);
     }, []);
 
+    const resetStream = useCallback(() => {
+        setLedger(prev => {
+            const streamId = prev.activeStreamId;
+            const s = prev.streams[streamId];
+            if (!s) return prev;
+            return {
+                ...prev,
+                streams: {
+                    ...prev.streams,
+                    [streamId]: {
+                        ...s,
+                        currentLinkIndex: 0,
+                        elapsed: 0,
+                        isRunning: false,
+                        links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
+                        history: []
+                    }
+                }
+            };
+        });
+    }, []);
+
     const addStream = useCallback((name) => {
         const id = `stream_${Date.now()}`;
         setLedger(prev => ({
@@ -160,11 +182,20 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
                 }
             };
 
-            // Switch to a different non-finished stream if available
             let nextActiveId = prev.activeStreamId;
             if (prev.activeStreamId === streamId) {
-                const availableStreams = Object.values(nextStreams).filter(st => !st.isFinished && st.id !== streamId);
-                nextActiveId = availableStreams.length > 0 ? availableStreams[0].id : streamId;
+                const newId = `stream_${Date.now()}`;
+                const baseName = `Stream ${Object.keys(nextStreams).length + 1}`;
+                nextStreams[newId] = {
+                    id: newId,
+                    name: baseName,
+                    currentLinkIndex: 0,
+                    elapsed: 0,
+                    isRunning: false,
+                    links: [{ id: 'link_1', label: 'Link I', status: 'active' }],
+                    history: []
+                };
+                nextActiveId = newId;
             }
 
             return {
@@ -388,10 +419,11 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
         isActive, setIsActive,
         pomodoroState, setPomodoroState,
         focusCount, setFocusCount,
-        ledger,
+        ledger, setLedger,
         latencySessionTotal,
         advanceLatencyBlock,
         resetLatencyWorkflow,
+        resetStream,
         addStream,
         switchStream,
         removeStream,

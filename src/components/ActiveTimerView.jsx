@@ -7,15 +7,18 @@ export const ActiveTimerView = ({
   pomodoroState,
   focusCount,
   timeLeft,
+  setTimeLeft,
   isActive,
   setIsActive,
   isAlerting,
   formData,
   setFormData,
   ledger,
+  setLedger,
   latencySessionTotal,
   advanceLatencyBlock,
   resetLatencyWorkflow,
+  resetStream,
   addStream,
   switchStream,
   removeStream,
@@ -38,6 +41,10 @@ export const ActiveTimerView = ({
   const [tempStreamName, setTempStreamName] = useState("");
   const [showEndStreamPopup, setShowEndStreamPopup] = useState(false);
   const [endStreamNotes, setEndStreamNotes] = useState("");
+  
+  const [isEditingTimer, setIsEditingTimer] = useState(false);
+  const [tempTimerValue, setTempTimerValue] = useState("");
+  const timerClickTimeout = React.useRef(null);
 
   const handleAdvance = (outcome) => {
     advanceLatencyBlock(outcome, "");
@@ -47,6 +54,70 @@ export const ActiveTimerView = ({
     endStream(ledger.activeStreamId, endStreamNotes);
     setShowEndStreamPopup(false);
     setEndStreamNotes("");
+  };
+
+  const handleTimerClick = (e) => {
+    if (isEditingTimer) return;
+    if (e.detail === 1) {
+      timerClickTimeout.current = setTimeout(() => {
+        playPeep(880);
+        isLatencyBlocks ? toggleStream(ledger.activeStreamId) : setIsActive(!isActive);
+      }, 250);
+    }
+  };
+
+  const handleTimerDoubleClick = () => {
+    if (timerClickTimeout.current) clearTimeout(timerClickTimeout.current);
+    
+    const isRunning = isLatencyBlocks ? activeStream?.isRunning : isActive;
+    if (isRunning) return; // Only allow editing if stopped/paused
+
+    const formattedTime = `${Math.floor(displaySeconds / 60)}:${(displaySeconds % 60).toString().padStart(2, "0")}`;
+    setTempTimerValue(formattedTime);
+    setIsEditingTimer(true);
+  };
+
+  const saveTimerValue = () => {
+    setIsEditingTimer(false);
+    
+    let newSeconds = displaySeconds;
+    const parts = tempTimerValue.split(':');
+    if (parts.length === 2) {
+      const m = parseInt(parts[0], 10) || 0;
+      const s = parseInt(parts[1], 10) || 0;
+      newSeconds = m * 60 + s;
+    } else if (parts.length === 1) {
+      newSeconds = parseInt(parts[0], 10) * 60 || 0;
+    }
+    
+    if (newSeconds !== displaySeconds && newSeconds >= 0) {
+      if (isLatencyBlocks) {
+         setLedger(prev => {
+            const s = prev.streams[ledger.activeStreamId];
+            if (!s) return prev;
+            return {
+                ...prev,
+                streams: {
+                    ...prev.streams,
+                    [ledger.activeStreamId]: {
+                        ...s,
+                        elapsed: newSeconds
+                    }
+                }
+            };
+         });
+      } else {
+         setTimeLeft(newSeconds);
+      }
+    }
+  };
+
+  const handleTimerKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      saveTimerValue();
+    } else if (e.key === 'Escape') {
+      setIsEditingTimer(false);
+    }
   };
 
   const activeStreamsList = Object.values(ledger?.streams || {}).filter(s => !s.isFinished);
@@ -136,9 +207,24 @@ export const ActiveTimerView = ({
                             {!isLatencyBlocks && settings.sessionMode === 'pomodoro' && <span className="text-main/50 font-bold">Sessions: {focusCount}</span>}
                         </div>
                         
-                        <h1 className="text-[10rem] leading-none font-mono font-extrabold tracking-tighter text-main tabular-nums timer-glow z-10 select-none cursor-pointer" onClick={() => { playPeep(880); isLatencyBlocks ? toggleStream(ledger.activeStreamId) : setIsActive(!isActive); }}>
-                            {Math.floor(displaySeconds / 60)}:{(displaySeconds % 60).toString().padStart(2, "0")}
-                        </h1>
+                        {isEditingTimer ? (
+                            <input
+                                autoFocus
+                                value={tempTimerValue}
+                                onChange={(e) => setTempTimerValue(e.target.value)}
+                                onBlur={saveTimerValue}
+                                onKeyDown={handleTimerKeyDown}
+                                className="text-[10rem] leading-none font-mono font-extrabold tracking-tighter text-main tabular-nums timer-glow text-center bg-transparent border-none outline-none focus:ring-0 w-full z-10 p-0 m-0"
+                            />
+                        ) : (
+                            <h1 
+                                className="text-[10rem] leading-none font-mono font-extrabold tracking-tighter text-main tabular-nums timer-glow z-10 select-none cursor-pointer" 
+                                onClick={handleTimerClick}
+                                onDoubleClick={handleTimerDoubleClick}
+                            >
+                                {Math.floor(displaySeconds / 60)}:{(displaySeconds % 60).toString().padStart(2, "0")}
+                            </h1>
+                        )}
                     </div>
 
                     <div className="mt-auto grid grid-cols-12 gap-3 z-10 shrink-0">
@@ -171,7 +257,7 @@ export const ActiveTimerView = ({
                     
                     <div className="mt-3 flex flex-wrap items-center gap-3 shrink-0">
                         {isLatencyBlocks && (
-                            <button onClick={resetLatencyWorkflow} className="w-16 h-12 bg-app-surface border border-white/5 hover:border-white/10 hover:bg-white/[0.03] rounded-xl flex items-center justify-center text-app-muted hover:text-white transition-all shadow-inner" title="Reset Workflow">
+                            <button onClick={resetStream} className="w-16 h-12 bg-app-surface border border-white/5 hover:border-white/10 hover:bg-white/[0.03] rounded-xl flex items-center justify-center text-app-muted hover:text-white transition-all shadow-inner" title="Reset Stream">
                                 <i className="ph-bold ph-arrow-counter-clockwise text-lg"></i>
                             </button>
                         )}
