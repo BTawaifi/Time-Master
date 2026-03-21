@@ -528,6 +528,7 @@ function App() {
                     latencySessionTotal={latencySessionTotal}
                     advanceLatencyBlock={advanceLatencyBlock}
                     resetLatencyWorkflow={resetLatencyWorkflow}
+                    resetStream={resetStream}
                     addStream={addStream}
                     switchStream={switchStream}
                     removeStream={removeStream}
