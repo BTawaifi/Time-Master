@@ -138,6 +138,44 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
         });
     }, []);
 
+    const endStream = useCallback((streamId, reviewNotes) => {
+        setLedger(prev => {
+            const s = prev.streams[streamId];
+            if (!s) return prev;
+            
+            const nextStreams = {
+                ...prev.streams,
+                [streamId]: {
+                    ...s,
+                    isRunning: false,
+                    isFinished: true,
+                    reviewNotes: reviewNotes || '',
+                    history: [...s.history, {
+                        block: `End Stream`,
+                        label: 'Stream Finished',
+                        duration: s.elapsed,
+                        comment: reviewNotes || 'No review notes',
+                        timestamp: new Date().toISOString()
+                    }].slice(-6)
+                }
+            };
+
+            // Switch to a different non-finished stream if available
+            let nextActiveId = prev.activeStreamId;
+            if (prev.activeStreamId === streamId) {
+                const availableStreams = Object.values(nextStreams).filter(st => !st.isFinished && st.id !== streamId);
+                nextActiveId = availableStreams.length > 0 ? availableStreams[0].id : streamId;
+            }
+
+            return {
+                ...prev,
+                activeStreamId: nextActiveId,
+                streams: nextStreams
+            };
+        });
+        playPeep(440, 0.2);
+    }, [playPeep]);
+
     const updateLinkNote = useCallback((streamId, linkId, note) => {
         setLedger(prev => {
             const s = prev.streams[streamId];
@@ -359,6 +397,7 @@ export const useTimer = (settings, setSettings, playPeep, playAlarm, setIsEnforc
         removeStream,
         toggleStream,
         renameStream,
+        endStream,
         updateLinkNote,
         adjustTimer, resetTimer, forceFinish
     };

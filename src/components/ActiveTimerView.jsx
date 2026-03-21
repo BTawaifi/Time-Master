@@ -21,6 +21,7 @@ export const ActiveTimerView = ({
   removeStream,
   toggleStream,
   renameStream,
+  endStream,
   updateLinkNote,
   openManualReview,
   adjustTimer,
@@ -35,10 +36,21 @@ export const ActiveTimerView = ({
 
   const [isEditingStreamName, setIsEditingStreamName] = useState(false);
   const [tempStreamName, setTempStreamName] = useState("");
+  const [showEndStreamPopup, setShowEndStreamPopup] = useState(false);
+  const [endStreamNotes, setEndStreamNotes] = useState("");
 
   const handleAdvance = (outcome) => {
     advanceLatencyBlock(outcome, "");
   };
+
+  const handleEndStreamConfirm = () => {
+    endStream(ledger.activeStreamId, endStreamNotes);
+    setShowEndStreamPopup(false);
+    setEndStreamNotes("");
+  };
+
+  const activeStreamsList = Object.values(ledger?.streams || {}).filter(s => !s.isFinished);
+  const finishedStreamsCount = Object.values(ledger?.streams || {}).filter(s => s.isFinished).length;
 
   return (
     <main className="flex-1 overflow-hidden p-6 flex items-center justify-center z-10 w-full relative">
@@ -145,9 +157,15 @@ export const ActiveTimerView = ({
                                 <i className="ph-bold ph-arrow-right text-app-muted group-hover:accent-text transition-colors text-lg group-hover:translate-x-1"></i>
                                 <span className="text-[10px] font-bold tracking-wide uppercase text-app-muted group-hover:accent-text">{isLatencyBlocks ? "Next" : "Finish"}</span>
                             </button>
-                            <button onClick={() => { playPeep(440); isLatencyBlocks ? handleAdvance("failure") : resetTimer(); }} className="w-16 bg-app-surface border border-app-danger/20 hover:border-app-danger/50 hover:bg-app-danger/10 text-app-danger rounded-2xl flex items-center justify-center transition-all group shadow-inner" title={isLatencyBlocks ? "Break Chain" : "Reset Timer"}>
-                                <i className={`ph-bold ${isLatencyBlocks ? "ph-link-break" : "ph-arrow-counter-clockwise"} text-xl group-hover:scale-110 transition-transform`}></i>
-                            </button>
+                            {isLatencyBlocks ? (
+                                <button onClick={() => { playPeep(440); setShowEndStreamPopup(true); }} className="w-16 bg-app-surface border border-app-border hover:border-white/20 hover:bg-white/[0.03] text-main rounded-2xl flex items-center justify-center transition-all group shadow-inner" title="End Stream">
+                                    <i className="ph-bold ph-stop-circle text-xl group-hover:scale-110 transition-transform text-app-danger"></i>
+                                </button>
+                            ) : (
+                                <button onClick={() => { playPeep(440); resetTimer(); }} className="w-16 bg-app-surface border border-app-danger/20 hover:border-app-danger/50 hover:bg-app-danger/10 text-app-danger rounded-2xl flex items-center justify-center transition-all group shadow-inner" title="Reset Timer">
+                                    <i className="ph-bold ph-arrow-counter-clockwise text-xl group-hover:scale-110 transition-transform"></i>
+                                </button>
+                            )}
                         </div>
                     </div>
                     
@@ -167,9 +185,9 @@ export const ActiveTimerView = ({
                 </div>
                 
                 {/* Horizontal Stream List Layout when Latency Blocks */}
-                {isLatencyBlocks && Object.keys(ledger.streams).length > 1 && (
+                {isLatencyBlocks && (activeStreamsList.length > 1 || finishedStreamsCount > 0) && (
                     <div className="glass-panel rounded-3xl p-6 flex items-center gap-4 overflow-x-auto no-scrollbar">
-                        {Object.values(ledger.streams).map(s => (
+                        {activeStreamsList.map(s => (
                              <div key={s.id} onClick={() => switchStream(s.id)} onDoubleClick={() => toggleStream(s.id)} className={`shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all border relative ${s.id === ledger.activeStreamId ? 'bg-app-primary/10 border-app-primary shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-app-surface border-white/5 hover:bg-white/[0.03]'}`}>
                                 {s.isRunning && (
                                     <div className="absolute top-2 right-2 flex h-2 w-2">
@@ -189,6 +207,12 @@ export const ActiveTimerView = ({
                                 )}
                             </div>
                         ))}
+                        {finishedStreamsCount > 0 && (
+                            <div className="shrink-0 flex items-center gap-2 px-4 py-3 rounded-2xl bg-app-success/10 border border-app-success/20 text-app-success relative">
+                                <i className="ph-bold ph-check-circle text-lg"></i>
+                                <span className="text-xs font-bold tracking-widest uppercase">{finishedStreamsCount} Finished</span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
