@@ -40,7 +40,9 @@ export const ActiveTimerView = ({
   const [isEditingStreamName, setIsEditingStreamName] = useState(false);
   const [tempStreamName, setTempStreamName] = useState("");
   const [showEndStreamPopup, setShowEndStreamPopup] = useState(false);
+  const [showResetStreamPopup, setShowResetStreamPopup] = useState(false);
   const [endStreamNotes, setEndStreamNotes] = useState("");
+  const [showSessionSummaryModal, setShowSessionSummaryModal] = useState(false);
   
   const [isEditingTimer, setIsEditingTimer] = useState(false);
   const [tempTimerValue, setTempTimerValue] = useState("");
@@ -54,6 +56,11 @@ export const ActiveTimerView = ({
     endStream(ledger.activeStreamId, endStreamNotes);
     setShowEndStreamPopup(false);
     setEndStreamNotes("");
+  };
+
+  const handleResetStreamConfirm = () => {
+    resetStream();
+    setShowResetStreamPopup(false);
   };
 
   const handleTimerClick = (e) => {
@@ -257,12 +264,12 @@ export const ActiveTimerView = ({
                     
                     <div className="mt-3 flex flex-wrap items-center gap-3 shrink-0">
                         {isLatencyBlocks && (
-                            <button onClick={resetStream} className="w-16 h-12 bg-app-surface border border-white/5 hover:border-white/10 hover:bg-white/[0.03] rounded-xl flex items-center justify-center text-app-muted hover:text-white transition-all shadow-inner" title="Reset Stream">
+                            <button onClick={() => { playPeep(440); setShowResetStreamPopup(true); }} className="w-16 h-12 bg-app-surface border border-white/5 hover:border-white/10 hover:bg-white/[0.03] rounded-xl flex items-center justify-center text-app-muted hover:text-white transition-all shadow-inner" title="Reset Stream">
                                 <i className="ph-bold ph-arrow-counter-clockwise text-lg"></i>
                             </button>
                         )}
                         {(isLatencyBlocks || settings.sessionMode === 'deepWork') && (
-                            <button onClick={openManualReview} className="flex-1 h-12 bg-app-surface border border-app-border hover:border-accent-color/30 hover:bg-app-tintLow text-app-muted hover:text-main rounded-xl font-medium flex items-center justify-center gap-2 transition-all text-sm shadow-inner group">
+                            <button onClick={() => isLatencyBlocks ? setShowSessionSummaryModal(true) : openManualReview()} className="flex-1 h-12 bg-app-surface border border-app-border hover:border-accent-color/30 hover:bg-app-tintLow text-app-muted hover:text-main rounded-xl font-medium flex items-center justify-center gap-2 transition-all text-sm shadow-inner group">
                                 <i className="ph-bold ph-check-square-offset text-app-primary group-hover:scale-110 transition-transform"></i>
                                 Review & Save Session
                             </button>
@@ -454,6 +461,112 @@ export const ActiveTimerView = ({
                             className="px-4 py-2 rounded-xl text-sm font-bold bg-app-primary hover:bg-app-primaryHover text-app-primaryContrast shadow-neon-primary transition-colors"
                         >
                             End Stream
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* Session Summary Modal */}
+        {showSessionSummaryModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6">
+                <div className="bg-app-bg border border-app-border rounded-2xl p-6 shadow-glass w-[600px] max-w-full max-h-full flex flex-col gap-4">
+                    <div className="flex items-center justify-between shrink-0">
+                        <h2 className="text-lg font-bold text-main flex items-center gap-2">
+                            <i className="ph-bold ph-list-dashes text-app-primary"></i> Session Summary
+                        </h2>
+                        <button onClick={() => setShowSessionSummaryModal(false)} className="text-app-muted hover:text-main">
+                            <i className="ph-bold ph-x"></i>
+                        </button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-4">
+                        {Object.values(ledger?.streams || {}).map((stream) => (
+                            <div key={stream.id} className="bg-app-surface border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+                                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                                    <h3 className="text-sm font-bold text-main">{stream.name}</h3>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] text-app-muted font-mono">{((stream.elapsed || 0) / 60).toFixed(1)}m</span>
+                                        {stream.isFinished ? (
+                                            <span className="text-[10px] font-bold tracking-widest uppercase text-app-success bg-app-success/10 px-2 py-0.5 rounded">Finished</span>
+                                        ) : (
+                                            <span className="text-[10px] font-bold tracking-widest uppercase text-app-primary bg-app-primary/10 px-2 py-0.5 rounded">Active</span>
+                                        )}
+                                    </div>
+                                </div>
+                                
+                                {stream.links && stream.links.length > 0 && (
+                                    <div className="flex flex-col gap-2">
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-app-muted">Links</h4>
+                                        {stream.links.map((link) => (
+                                            <div key={link.id} className="bg-app-tintLow rounded-lg p-3 border border-app-border">
+                                                <div className="text-xs font-semibold text-main mb-1">{link.label}</div>
+                                                <div className="text-xs text-app-muted whitespace-pre-wrap">{link.note || <span className="italic opacity-50">No objective set</span>}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {stream.isFinished && stream.reviewNotes && (
+                                    <div className="flex flex-col gap-1 mt-1">
+                                        <h4 className="text-[10px] font-bold tracking-widest uppercase text-app-muted">End Stream Notes</h4>
+                                        <div className="text-xs text-app-muted bg-app-tintLow rounded-lg p-3 border border-app-border whitespace-pre-wrap">
+                                            {stream.reviewNotes}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-2 shrink-0 pt-2 border-t border-white/10">
+                        <button
+                            onClick={() => setShowSessionSummaryModal(false)}
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-app-muted hover:text-main hover:bg-app-tintLow transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={() => {
+                                setShowSessionSummaryModal(false);
+                                openManualReview();
+                            }}
+                            className="px-4 py-2 rounded-xl text-sm font-bold bg-app-primary hover:bg-app-primaryHover text-app-primaryContrast shadow-neon-primary transition-colors flex items-center gap-2"
+                        >
+                            <i className="ph-bold ph-check-square-offset"></i>
+                            Proceed to Review
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        {/* Reset Stream Popup Modal */}
+        {showResetStreamPopup && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="bg-app-bg border border-app-border rounded-2xl p-6 shadow-glass w-[400px] flex flex-col gap-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-lg font-bold text-main flex items-center gap-2">
+                            <i className="ph-bold ph-arrow-counter-clockwise text-app-primary"></i> Reset Stream
+                        </h2>
+                        <button onClick={() => setShowResetStreamPopup(false)} className="text-app-muted hover:text-main">
+                            <i className="ph-bold ph-x"></i>
+                        </button>
+                    </div>
+                    <p className="text-sm text-app-muted">
+                        Are you sure you want to reset this stream? This will reset the timer and clear all your current links for this specific stream.
+                    </p>
+                    <div className="flex justify-end gap-3 mt-2">
+                        <button
+                            onClick={() => setShowResetStreamPopup(false)}
+                            className="px-4 py-2 rounded-xl text-sm font-bold text-app-muted hover:text-main hover:bg-app-tintLow transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleResetStreamConfirm}
+                            className="px-4 py-2 rounded-xl text-sm font-bold bg-app-primary hover:bg-app-primaryHover text-app-primaryContrast shadow-neon-primary transition-colors"
+                        >
+                            Reset Stream
                         </button>
                     </div>
                 </div>
