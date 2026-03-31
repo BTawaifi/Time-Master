@@ -131,7 +131,7 @@ function createWindow() {
 
     const isDev = !app.isPackaged;
     if (isDev) {
-        mainWindow.loadURL('http://localhost:5174');
+        mainWindow.loadURL('http://localhost:5315');
     } else {
         mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
     }
@@ -323,7 +323,7 @@ if (ipcMain) {
     ipcMain.on('set-eclipse-level', (event, level) => {
         const normalizedLevel = normalizeEclipseLevel(level);
         if (!Array.isArray(enforcementConfig.desktopEclipse) || enforcementConfig.desktopEclipse.length === 0 || normalizedLevel === 0) { closeEclipseWindows(); return; }
-        
+
         if (eclipseWindows.length === 0) {
             const displays = screen.getAllDisplays();
             displays.forEach(display => {
@@ -344,7 +344,7 @@ if (ipcMain) {
                 mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
             }
         }
-        
+
         // Improve visibility: Level 1 starts at 25% dim, then +8% per level
         const targetOpacity = Math.min(0.95, 0.15 + normalizedLevel * 0.1);
         eclipseWindows.forEach(win => { if (!win.isDestroyed()) win.setOpacity(targetOpacity); });
@@ -355,14 +355,14 @@ if (ipcMain) {
         if (mainWindow && !mainWindow.isDestroyed()) {
             // Prepared state:restore if hidden/minimized
             if (mainWindow.isMinimized()) mainWindow.restore();
-            
+
             // Set Kiosk before showing to prevent taskbar flicker on some OS versions
             const useKiosk = Array.isArray(enforcementConfig.kioskMode) && enforcementConfig.kioskMode.includes('review');
             mainWindow.setKiosk(useKiosk);
             mainWindow.setSkipTaskbar(true);
-            
+
             showMainWindow();
-            
+
             // Absolute system priority level
             mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
             if (process.platform === 'darwin') mainWindow.setVisibleOnAllWorkspaces(true);
@@ -385,7 +385,7 @@ if (ipcMain) {
                 mainWindow.removeListener('blur', mainWindow._enforceBlurHandler);
                 delete mainWindow._enforceBlurHandler;
             }
-            
+
             mainWindow.setKiosk(false);
             mainWindow.setSkipTaskbar(false);
             mainWindow.setAlwaysOnTop(isStayOnTopGlobal, 'screen-saver', 1);
