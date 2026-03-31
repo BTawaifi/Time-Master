@@ -3,7 +3,7 @@ name: Deploy Time Master
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
   workflow_dispatch:
 
 permissions:

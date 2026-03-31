@@ -30,6 +30,33 @@ test('session archive helpers summarize latency block sessions', () => {
   ]);
 });
 
+test('session archive helpers summarize anchor sessions', () => {
+  const log = {
+    sessionMode: 'anchor',
+    nextStep: 'Resume the refactor',
+    sessionState: {
+      title: 'Stabilize anchor mode',
+      elapsedSeconds: 2460,
+      completedReturnCount: 2,
+      tangentCount: 3,
+      waitCount: 1,
+      unresolvedTangentCount: 1,
+    },
+  };
+
+  assert.equal(getSessionModeLabel(log.sessionMode), 'Anchor');
+  assert.equal(getSessionStateSummary(log), '2 returns • 1 waits • 41m');
+  assert.deepEqual(getSessionStateDetails(log), [
+    ['Anchor', 'Stabilize anchor mode'],
+    ['Focus time', '41m'],
+    ['Successful returns', '2'],
+    ['Tangents', '3'],
+    ['Wait count', '1'],
+    ['Unresolved tangents', '1'],
+    ['Next step', 'Resume the refactor'],
+  ]);
+});
+
 test('session archive helpers retain readable fallbacks for existing deep work logs', () => {
   const log = {
     sessionMode: 'deepWork',

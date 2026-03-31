@@ -189,6 +189,11 @@ export const SESSION_MODES = [
     label: "Neuro-Ledger",
     description: "Multi-stream DAG architecture for parallel task management and infinite chains.",
   },
+  {
+    id: "anchor",
+    label: "Anchor",
+    description: "Single-task workflow with explicit return tickets, waiting states, and tangent containment.",
+  },
 ];
 
 export const LATENCY_BLOCKS = [

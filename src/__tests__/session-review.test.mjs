@@ -28,6 +28,18 @@ test('shouldShowLatencyReviewAction only enables manual review for latency sessi
   }), true);
 });
 
+test('getSessionReviewMeta returns anchor closeout metadata', () => {
+  assert.deepEqual(getSessionReviewMeta({
+    sessionMode: 'anchor',
+    isEnforcedReview: false,
+  }), {
+    title: 'Anchor Closeout',
+    description: 'Capture the outcome, next move, and what caused drift.',
+    badgeText: 'ANCHOR SAVE',
+    badgeClassName: 'bg-app-primary/10 border-app-primary/20 text-app-primary',
+  });
+});
+
 test('getSessionReviewMeta distinguishes manual latency review from enforced review', () => {
   assert.deepEqual(getSessionReviewMeta({
     sessionMode: 'latencyBlocks',

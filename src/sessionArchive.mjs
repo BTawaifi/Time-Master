@@ -1,4 +1,5 @@
 const MODE_LABELS = {
+  anchor: 'Anchor',
   deepWork: 'Deep Work',
   pomodoro: 'Pomodoro',
   latencyBlocks: 'Neuro-Ledger',
@@ -27,7 +28,7 @@ export const getSessionStateSummary = (log) => {
   const state = log?.sessionState || {};
 
   if (log?.sessionMode === 'quickNote') {
-    return `Manual Note`;
+    return 'Manual Note';
   }
 
   if (log?.sessionMode === 'pomodoro') {
@@ -37,6 +38,12 @@ export const getSessionStateSummary = (log) => {
   if (log?.sessionMode === 'latencyBlocks') {
     const streamsCount = Object.keys(state.ledger?.streams || {}).length;
     return `${streamsCount} Streams • ${formatDurationCompact(state.totalSessionSeconds)}`;
+  }
+
+  if (log?.sessionMode === 'anchor') {
+    const returns = state.completedReturnCount || 0;
+    const waits = state.waitCount || 0;
+    return `${returns} returns • ${waits} waits • ${formatDurationCompact(state.elapsedSeconds)}`;
   }
 
   return `${formatDurationCompact(state.elapsedFocusSeconds)} focus`;
@@ -64,12 +71,24 @@ export const getSessionStateDetails = (log) => {
       ['Streams', String(streams.length)],
       ['Total Time', formatDurationCompact(state.totalSessionSeconds)],
     ];
-    
+
     streams.forEach(s => {
       details.push([`Stream: ${s.name}`, `${s.links.length} links`]);
     });
 
     return details;
+  }
+
+  if (log?.sessionMode === 'anchor') {
+    return [
+      ['Anchor', state.title || log.activity || 'Anchor Session'],
+      ['Focus time', formatDurationCompact(state.elapsedSeconds)],
+      ['Successful returns', String(state.completedReturnCount || 0)],
+      ['Tangents', String(state.tangentCount ?? state.tangentQueue?.length ?? 0)],
+      ['Wait count', String(state.waitCount || 0)],
+      ['Unresolved tangents', String(state.unresolvedTangentCount ?? 0)],
+      ['Next step', log.nextStep || 'None recorded'],
+    ];
   }
 
   return [

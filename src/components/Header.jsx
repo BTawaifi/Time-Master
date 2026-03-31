@@ -49,6 +49,9 @@ export const Header = ({
 
         {/* Center mode switcher */}
         <div className={`absolute left-1/2 -translate-x-1/2 flex items-center p-1 bg-app-tintLow border border-app-border rounded-full shadow-glass no-drag transition-opacity duration-300 ${isDisabled ? 'opacity-30 pointer-events-none' : ''}`}>
+            <button onClick={() => selectMode('anchor')} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-colors ${settings.sessionMode === 'anchor' ? 'bg-app-tintMed text-main shadow-[0_0_10px_rgba(255,255,255,0.05)] border border-app-border' : 'text-app-muted hover:text-main'}`}>
+                <i className="ph-bold ph-target"></i> Anchor
+            </button>
             <button onClick={() => selectMode('deepWork')} className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-colors ${settings.sessionMode === 'deepWork' ? 'bg-app-tintMed text-main shadow-[0_0_10px_rgba(255,255,255,0.05)] border border-app-border' : 'text-app-muted hover:text-main'}`}>
                 <i className="ph-bold ph-lightning"></i> Deep Work
             </button>
@@ -87,7 +90,7 @@ export const Header = ({
                 </div>
                 <h2 className="text-xl font-black text-main uppercase tracking-widest">Wipe Data?</h2>
                 <p className="text-app-muted text-sm leading-relaxed">
-                    Switching to <span className="text-white font-semibold">{pendingMode === 'deepWork' ? 'Deep Work' : pendingMode === 'pomodoro' ? 'Pomodoro' : 'Neuro-Ledger'}</span> will completely reset your current session progress and block state.
+                    Switching to <span className="text-white font-semibold">{pendingMode === 'anchor' ? 'Anchor' : pendingMode === 'deepWork' ? 'Deep Work' : pendingMode === 'pomodoro' ? 'Pomodoro' : 'Neuro-Ledger'}</span> will completely reset your current session progress and block state.
                 </p>
                 <div className="grid grid-cols-2 gap-3 w-full mt-6">
                     <button onClick={() => setPendingMode(null)} className="px-4 py-3 rounded-xl border border-app-border text-xs font-bold text-app-muted hover:text-main hover:bg-app-tintLow transition-colors tracking-widest uppercase">

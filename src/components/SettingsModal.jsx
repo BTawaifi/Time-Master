@@ -68,7 +68,9 @@ export const SettingsModal = ({
                   {SESSION_MODES.map((mode) => {
                     const isSelected = settings.sessionMode === mode.id;
                     const Icon =
-                      mode.id === "deepWork"
+                      mode.id === "anchor"
+                        ? TimerReset
+                        : mode.id === "deepWork"
                         ? Workflow
                         : mode.id === "pomodoro"
                           ? Clock3

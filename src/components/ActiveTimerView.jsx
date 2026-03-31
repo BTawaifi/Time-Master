@@ -31,6 +31,7 @@ export const ActiveTimerView = ({
   forceFinish,
   resetTimer,
   playPeep,
+  pinnedQuickNotes = [],
 }) => {
   const isLatencyBlocks = settings.sessionMode === "latencyBlocks";
   const activeStream = ledger?.streams?.[ledger.activeStreamId] || Object.values(ledger?.streams || {})?.[0];
@@ -47,6 +48,34 @@ export const ActiveTimerView = ({
   const [isEditingTimer, setIsEditingTimer] = useState(false);
   const [tempTimerValue, setTempTimerValue] = useState("");
   const timerClickTimeout = React.useRef(null);
+
+  const formatNoteTimestamp = (note) => {
+    const rawTimestamp = note?.timestamp || note?.createdAt || note?.capturedAt || note?.date || "";
+    if (!rawTimestamp) return "recent";
+    if (typeof rawTimestamp === "string") {
+      const parts = rawTimestamp.split(", ");
+      return parts[1] || parts[0] || rawTimestamp;
+    }
+    const parsed = new Date(rawTimestamp);
+    if (Number.isNaN(parsed.getTime())) return "recent";
+    return parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const getQuickNotePreview = (note) => {
+    const text = String(note?.content || note?.output || note?.note || "").trim();
+    if (!text) return "Pinned follow-up.";
+    return text.length > 100 ? `${text.slice(0, 97)}...` : text;
+  };
+
+  const followUpNotes = React.useMemo(() => {
+    return [...(Array.isArray(pinnedQuickNotes) ? pinnedQuickNotes : [])]
+      .sort((a, b) => {
+        const aTime = new Date(a?.pinnedAt || a?.timestamp || 0).getTime();
+        const bTime = new Date(b?.pinnedAt || b?.timestamp || 0).getTime();
+        return bTime - aTime;
+      })
+      .slice(0, 3);
+  }, [pinnedQuickNotes]);
 
   const handleAdvance = (outcome) => {
     advanceLatencyBlock(outcome, "");
@@ -310,7 +339,45 @@ export const ActiveTimerView = ({
                 )}
             </div>
 
-            <div className="col-span-4 flex flex-col gap-4 h-full min-h-0">
+            <div className="col-span-4 flex flex-col gap-4 h-full min-h-0 overflow-y-auto no-scrollbar">
+                {/* Follow-Up Inbox Section */}
+                <div className="glass-panel rounded-2xl p-5 flex flex-col h-[37%] min-h-[220px] shadow-glass border-t border-t-white/10 shrink-0">
+                    <div className="flex items-center justify-between shrink-0 mb-3">
+                        <div className="flex items-center gap-2 text-app-muted">
+                            <i className="ph-bold ph-tray text-sm text-app-primary"></i>
+                            <span className="text-[10px] font-bold tracking-widest uppercase text-app-primary/80">Follow-Up Inbox</span>
+                        </div>
+                        <div className="px-2 py-0.5 bg-app-primary/10 border border-app-primary/20 rounded-md text-[9px] font-bold text-app-primary">
+                            {followUpNotes.length} pinned
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-3 flex-1 overflow-y-auto no-scrollbar pr-1">
+                      {followUpNotes.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] p-3 text-[11px] text-app-muted italic">
+                          Important captures surfaced here.
+                        </div>
+                      ) : (
+                        followUpNotes.map((note, idx) => (
+                          <div key={note.id || idx} className="rounded-xl bg-app-primary/[0.03] border border-app-primary/10 p-3 space-y-1.5 transition-all hover:bg-app-primary/5 group shrink-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-app-primary/60 flex items-center gap-1.5">
+                                <div className="w-1 h-1 rounded-full bg-app-primary/40"></div>
+                                Snapshot
+                              </span>
+                              <span className="text-[9px] font-mono text-app-muted group-hover:text-app-primary/40 transition-colors">
+                                {formatNoteTimestamp(note)}
+                              </span>
+                            </div>
+                            <div className="text-[12px] font-medium text-main/90 leading-relaxed line-clamp-3 group-hover:text-white transition-colors">
+                              {getQuickNotePreview(note)}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                </div>
+
                 <div className="glass-panel rounded-2xl p-5 flex flex-col gap-4 shadow-glass border-t border-t-white/10 shrink-0">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-app-muted">

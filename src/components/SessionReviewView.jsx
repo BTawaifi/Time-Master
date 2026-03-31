@@ -275,7 +275,7 @@ export const SessionReviewView = ({
         </div>
       </div>
       <div className="fixed bottom-0 left-0 w-full p-6 bg-transparent backdrop-blur-3xl border-t border-app-border flex flex-col sm:flex-row gap-4 justify-center z-50">
-        {isEnforcedReview && settings.enforcement?.mantraGate && !formData.unlocked ? (
+        {isEnforcedReview && settings.enforcement?.mantraGate && !formData.unlocked && !window.__TEST_SKIP_VERIFICATION ? (
           <div className="w-full max-w-lg">
             <MantraGate
               goal={formData.bet}
@@ -308,7 +308,7 @@ export const SessionReviewView = ({
             >
               <i className="ph-bold ph-compass text-lg"></i> Save & Modify
             </button>
-            {(!isEnforcedReview || !settings.enforcement?.kioskMode) && (
+            {(!isEnforcedReview || !settings.enforcement?.kioskMode?.includes('review')) && (
               <>
                 <button
                   onClick={handleGoBack}

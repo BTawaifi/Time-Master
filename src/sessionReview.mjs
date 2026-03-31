@@ -12,6 +12,15 @@ export const shouldShowLatencyReviewAction = ({
 };
 
 export const getSessionReviewMeta = ({ sessionMode, isEnforcedReview }) => {
+  if (sessionMode === 'anchor') {
+    return {
+      title: 'Anchor Closeout',
+      description: 'Capture the outcome, next move, and what caused drift.',
+      badgeText: 'ANCHOR SAVE',
+      badgeClassName: 'bg-app-primary/10 border-app-primary/20 text-app-primary',
+    };
+  }
+
   if (sessionMode === 'latencyBlocks' && !isEnforcedReview) {
     return {
       title: 'Latency Review',

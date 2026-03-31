@@ -4,6 +4,7 @@ import {
   ArrowRight,
   Calendar,
   ClipboardCheck,
+  Clock3,
   Microscope,
   Star,
   Gem,
@@ -16,11 +17,16 @@ import {
   Target as TargetIcon,
   BrainCircuit,
   AlertCircle,
+  CornerDownLeft,
+  FileCheck2,
   Flag,
+  Orbit,
   Zap,
   Skull,
+  TimerReset,
   Workflow,
   Layers,
+  Pin,
 } from "lucide-react";
 import {
   getSessionModeLabel,
@@ -47,6 +53,7 @@ export const ArchiveView = ({
   const [archiveError, setArchiveError] = useState("");
   const [copied, setCopied] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [modeFilter, setModeFilter] = useState("all");
 
   const toggleExpand = useCallback((id) => {
     setExpandedIds((prev) => {
@@ -64,7 +71,7 @@ export const ArchiveView = ({
     return Object.keys(archiveData).sort((a, b) => b.localeCompare(a));
   }, [archiveData]);
 
-  const logs = useMemo(() => {
+  const allLogs = useMemo(() => {
     const visible = [];
     for (const date of sortedDates) {
       const isInRange =
@@ -78,6 +85,72 @@ export const ArchiveView = ({
     }
     return visible;
   }, [archiveData, sortedDates, startDate, endDate]);
+
+  const modeCounts = useMemo(() => {
+    const counts = {
+      all: allLogs.length,
+      anchor: 0,
+      deepWork: 0,
+      pomodoro: 0,
+      latencyBlocks: 0,
+      quickNote: 0,
+      followUp: 0,
+    };
+
+    allLogs.forEach((log) => {
+      if (counts[log.sessionMode] !== undefined) {
+        counts[log.sessionMode] += 1;
+      }
+
+      if (log.sessionMode === "quickNote" && log.pinnedFollowUp) {
+        counts.followUp += 1;
+      }
+    });
+
+    return counts;
+  }, [allLogs]);
+
+  const logs = useMemo(() => {
+    if (modeFilter === "all") {
+      return allLogs;
+    }
+
+    if (modeFilter === "followUp") {
+      return allLogs.filter(
+        (log) => log.sessionMode === "quickNote" && log.pinnedFollowUp,
+      );
+    }
+
+    return allLogs.filter((log) => log.sessionMode === modeFilter);
+  }, [allLogs, modeFilter]);
+
+  const emptyStateCopy = useMemo(() => {
+    if (modeFilter === "followUp") {
+      return "No pinned follow-ups found in this range. Quick notes marked as follow-up will appear here.";
+    }
+
+    if (modeFilter === "quickNote") {
+      return "No quick notes found in this range.";
+    }
+
+    if (modeFilter === "anchor") {
+      return "No Anchor sessions found in this range.";
+    }
+
+    if (modeFilter === "latencyBlocks") {
+      return "No Neuro-Ledger sessions found in this range.";
+    }
+
+    if (modeFilter === "pomodoro") {
+      return "No Pomodoro sessions found in this range.";
+    }
+
+    if (modeFilter === "deepWork") {
+      return "No Deep Work sessions found in this range.";
+    }
+
+    return "No session data found in this range.";
+  }, [modeFilter]);
 
   const persistArchiveData = useCallback(
     async (nextData, onSuccess) => {
@@ -155,6 +228,28 @@ export const ArchiveView = ({
           </button>
         </div>
       </header>
+      <div className="flex flex-wrap gap-3">
+        {[
+          ["all", "All"],
+          ["anchor", "Anchor"],
+          ["deepWork", "Deep Work"],
+          ["pomodoro", "Pomodoro"],
+          ["latencyBlocks", "Ledger"],
+          ["quickNote", "Notes"],
+          ["followUp", "Follow-Up"],
+        ].map(([id, label]) => {
+          const isSelected = modeFilter === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setModeFilter(id)}
+              className={`px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-[0.2em] transition-all ${isSelected ? "bg-app-primary text-app-primaryContrast border-transparent shadow-neon-primary-sm" : "bg-app-tintLow text-app-muted border-app-border hover:text-main hover:bg-app-surface"}`}
+            >
+              {label} ({modeCounts[id] || 0})
+            </button>
+          );
+        })}
+      </div>
       {archiveError && (
         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">
           {archiveError}
@@ -163,14 +258,18 @@ export const ArchiveView = ({
       <div className="space-y-6">
         {logs.length === 0 ? (
           <div className="glass-card p-32 text-center opacity-20 italic flex flex-col items-center gap-4">
-            <Microscope size={48} /> No session data found in this range.
+            <Microscope size={48} /> {emptyStateCopy}
           </div>
         ) : (
           logs.map((log) => {
             const isExpanded =
               expandedIds.has(log.id) || editingId === log.id;
+            const isQuickNoteSession = log.sessionMode === "quickNote";
+            const isAnchorSession = log.sessionMode === "anchor";
             const won =
-              editingId === log.id
+              isQuickNoteSession || isAnchorSession
+                ? true
+                : editingId === log.id
                 ? editFields.hypothesisValid
                 : log.hypothesisValid;
             const sessionModeLabel = getSessionModeLabel(log.sessionMode);
@@ -207,14 +306,25 @@ export const ArchiveView = ({
                           {log.activity}
                         </h3>
                         <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest border transition-all ${won ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}
-                          >
-                            {won ? "GOAL MET" : "MISSED"}
-                          </span>
+                          {isQuickNoteSession ? (
+                            <span className="px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest border transition-all bg-blue-400/10 text-blue-300 border-blue-400/20">
+                              NOTE
+                            </span>
+                          ) : (
+                            <span
+                              className={`px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest border transition-all ${won ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"}`}
+                            >
+                              {won ? "GOAL MET" : "MISSED"}
+                            </span>
+                          )}
                           {log.shame && (
                             <span className="shame-badge px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest border bg-red-500/20 text-red-400 border-red-500/30 flex items-center gap-1">
                               <Skull size={8} /> {log.shameReason || 'SHAME'}
+                            </span>
+                          )}
+                          {isQuickNoteSession && log.pinnedFollowUp && (
+                            <span className="px-2 py-0.5 rounded-[4px] text-[8px] font-black uppercase tracking-widest border bg-yellow-400/10 text-yellow-300 border-yellow-400/20">
+                              FOLLOW-UP
                             </span>
                           )}
                           {editingId === log.id && (
@@ -235,7 +345,7 @@ export const ArchiveView = ({
                       </div>
                       {!isExpanded && (
                         <div className="flex items-center gap-4">
-                          {log.sessionMode !== 'quickNote' && (
+                          {!isQuickNoteSession && !isAnchorSession && (
                             <>
                               <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
                                 <Star size={10} className="accent-text" />{" "}
@@ -251,9 +361,38 @@ export const ArchiveView = ({
                               </div>
                             </>
                           )}
-                          <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
-                            <Flag size={10} className="accent-text" /> {sessionModeLabel}: {sessionSummary}
-                          </div>
+                          {isQuickNoteSession && (
+                            <>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase shrink-0">
+                                <ClipboardCheck size={10} className="text-blue-300" />{" "}
+                                Quick Capture
+                              </div>
+                              <div className="text-[9px] font-bold opacity-40 uppercase truncate max-w-[800px]">
+                                {String(log.output || "").slice(0, 180) || "Saved note"}
+                              </div>
+                            </>
+                          )}
+                          {isAnchorSession && (
+                            <>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                                <CornerDownLeft size={10} className="accent-text" />{" "}
+                                {log.sessionState?.completedReturnCount || 0} Returns
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                                <Orbit size={10} className="text-yellow-400" />{" "}
+                                {log.sessionState?.driftCount || 0} Drifts
+                              </div>
+                              <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                                <Clock3 size={10} className="text-blue-400" />{" "}
+                                {log.sessionState?.waitCount || 0} Waits
+                              </div>
+                            </>
+                          )}
+                          {!isQuickNoteSession && (
+                            <div className="flex items-center gap-1.5 text-[9px] font-bold opacity-40 uppercase">
+                              <Flag size={10} className="accent-text" /> {sessionModeLabel}: {sessionSummary}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -326,6 +465,25 @@ export const ArchiveView = ({
                               <span className="text-[9px] font-black uppercase tracking-widest animate-in fade-in duration-200">Confirm?</span>
                             )}
                           </button>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const nd = { ...archiveData };
+                              nd[log.date] = nd[log.date].map((entry) =>
+                                entry.id === log.id
+                                  ? {
+                                      ...entry,
+                                      pinnedFollowUp: !entry.pinnedFollowUp,
+                                    }
+                                  : entry,
+                              );
+                              await persistArchiveData(nd);
+                            }}
+                            className={`p-2 rounded-lg transition-all ${log.pinnedFollowUp ? "bg-yellow-400/20 text-yellow-300 shadow-neon-primary-sm" : "bg-white/5 text-white/40 hover:bg-white/10"}`}
+                            title={log.pinnedFollowUp ? "Unpin Follow-Up" : "Pin Follow-Up"}
+                          >
+                            <Pin size={16} fill={log.pinnedFollowUp ? "currentColor" : "none"} />
+                          </button>
                         </>
                       )}
                     </div>
@@ -338,34 +496,272 @@ export const ArchiveView = ({
                 </div>
                 {isExpanded && (
                   <div className="p-8 space-y-10 animate-in fade-in slide-in-from-top-2 duration-500 text-main">
-                    {log.sessionMode === 'quickNote' ? (
+                    {isQuickNoteSession ? (
                       <div className="space-y-6">
-                        <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
-                          <ClipboardCheck size={14} className="accent-text" />{" "}
-                          Saved Note Content
-                        </div>
-                        {editingId === log.id ? (
-                          <textarea
-                            value={editFields.output}
-                            onChange={(e) =>
-                              setEditFields({
-                                ...editFields,
-                                output: e.target.value,
-                              })
-                            }
-                            className="input-field h-64 text-sm leading-relaxed"
-                          />
-                        ) : (
-                          <div className="glass-card p-8 border-white/5 bg-black/20">
-                            <p className="text-lg font-light data-text leading-relaxed whitespace-pre-wrap">
-                              {log.output}
-                            </p>
+                        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)] gap-8">
+                          <div className="space-y-6">
+                            <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] opacity-30">
+                              <ClipboardCheck size={14} className="text-blue-300" />{" "}
+                              Saved Note Content
+                            </div>
+                            {editingId === log.id ? (
+                              <textarea
+                                value={editFields.output}
+                                onChange={(e) =>
+                                  setEditFields({
+                                    ...editFields,
+                                    output: e.target.value,
+                                  })
+                                }
+                                className="input-field h-64 text-sm leading-relaxed"
+                              />
+                            ) : (
+                              <div className="relative overflow-hidden rounded-[2rem] border border-blue-400/15 bg-[radial-gradient(circle_at_top_left,rgba(96,165,250,0.14),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] p-8">
+                                <div className="absolute inset-y-0 left-0 w-1.5 bg-blue-300/60"></div>
+                                <p className="pl-4 text-lg font-light data-text leading-relaxed whitespace-pre-wrap">
+                                  {log.output}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        <div className="flex items-center gap-4 pt-4 border-t border-white/5 opacity-40">
-                           <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2">
-                             <Calendar size={12} /> Captured on {log.timestamp}
-                           </div>
+
+                          <div className="space-y-6">
+                            <div className="glass-card p-6 border-blue-400/10 bg-blue-400/[0.03] space-y-4">
+                              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-300/80">
+                                <Calendar size={12} /> Capture Metadata
+                              </div>
+                              <div className="space-y-3">
+                                <div className="flex items-center justify-between gap-3 text-[11px] font-bold">
+                                  <span className="opacity-40 uppercase tracking-wide">Type</span>
+                                  <span className="text-right data-text">Quick Note</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 text-[11px] font-bold">
+                                  <span className="opacity-40 uppercase tracking-wide">Captured</span>
+                                  <span className="text-right data-text">{log.timestamp}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 text-[11px] font-bold">
+                                  <span className="opacity-40 uppercase tracking-wide">Characters</span>
+                                  <span className="text-right data-text">{String(log.output || "").length}</span>
+                                </div>
+                                <div className="flex items-center justify-between gap-3 text-[11px] font-bold">
+                                  <span className="opacity-40 uppercase tracking-wide">Follow-Up</span>
+                                  <span className="text-right data-text">{log.pinnedFollowUp ? "Pinned" : "None"}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      </div>
+                    ) : log.sessionMode === "anchor" ? (
+                      <div className="space-y-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                          <div className="glass-card p-6 border-white/5 space-y-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <TargetIcon size={14} className="accent-text" /> Anchor Intent
+                            </div>
+                            {editingId === log.id ? (
+                              <textarea
+                                value={editFields.bet || ""}
+                                onChange={(e) =>
+                                  setEditFields({
+                                    ...editFields,
+                                    bet: e.target.value,
+                                  })
+                                }
+                                className="input-field h-28 text-sm"
+                              />
+                            ) : (
+                              <p className="italic text-xl font-light data-text leading-relaxed pl-4 border-l-2 border-accent-color/20">
+                                "{log.bet || log.sessionState?.intent || "No anchor intent recorded."}"
+                              </p>
+                            )}
+                          </div>
+                          <div className="glass-card p-6 border-white/5 space-y-4">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <FileCheck2 size={14} className="accent-text" /> Outcome
+                            </div>
+                            {editingId === log.id ? (
+                              <textarea
+                                value={editFields.anchorOutcome || editFields.output || ""}
+                                onChange={(e) =>
+                                  setEditFields({
+                                    ...editFields,
+                                    anchorOutcome: e.target.value,
+                                    output: editFields.output || e.target.value,
+                                  })
+                                }
+                                className="input-field h-28 text-sm"
+                              />
+                            ) : (
+                              <p className="text-base data-text leading-relaxed whitespace-pre-wrap">
+                                {log.anchorOutcome || log.output || "No outcome recorded."}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="glass-card p-6 border-white/5 space-y-3">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <TimerReset size={14} /> Anchor Metrics
+                            </div>
+                            {sessionDetails.map(([label, value]) => (
+                              <div key={label} className="flex items-center justify-between text-[11px] font-bold gap-3">
+                                <span className="opacity-40 uppercase tracking-wide">{label}</span>
+                                <span className="text-right data-text">{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="glass-card p-6 border-white/5 space-y-3">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <AlertCircle size={14} /> Drift Cause
+                            </div>
+                            {editingId === log.id ? (
+                              <textarea
+                                value={editFields.friction || ""}
+                                onChange={(e) =>
+                                  setEditFields({
+                                    ...editFields,
+                                    friction: e.target.value,
+                                  })
+                                }
+                                className="input-field h-28 text-sm"
+                              />
+                            ) : (
+                              <p className="text-sm data-text leading-relaxed whitespace-pre-wrap">
+                                {log.friction || "No drift cause recorded."}
+                              </p>
+                            )}
+                          </div>
+                          <div className="glass-card p-6 border-white/5 space-y-3">
+                            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                              <Zap size={14} className="text-yellow-400" /> Tangent Follow-Up
+                            </div>
+                            {editingId === log.id ? (
+                              <textarea
+                                value={editFields.tangentFollowUp || editFields.quickWin || ""}
+                                onChange={(e) =>
+                                  setEditFields({
+                                    ...editFields,
+                                    tangentFollowUp: e.target.value,
+                                    quickWin: e.target.value,
+                                  })
+                                }
+                                className="input-field h-28 text-sm"
+                              />
+                            ) : (
+                              <p className="text-sm data-text leading-relaxed whitespace-pre-wrap">
+                                {log.tangentFollowUp || log.quickWin || "No tangent follow-up recorded."}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="glass-card p-6 border-white/5 space-y-4">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                            <Workflow size={14} className="accent-text" /> Anchor Timeline
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            {(log.sessionState?.history || []).length > 0 ? (
+                              (log.sessionState?.history || []).map((entry) => (
+                                <div key={entry.id || entry.timestamp} className="rounded-2xl border border-white/5 bg-black/20 p-4 space-y-2">
+                                  <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-widest">
+                                    <span className="opacity-40">{entry.type || "Event"}</span>
+                                    <span className="accent-text">{entry.timestamp?.split("T")[1]?.slice(0, 5) || "--:--"}</span>
+                                  </div>
+                                  <div className="text-sm font-semibold text-main">{entry.label}</div>
+                                  {entry.nextAction ? (
+                                    <div className="text-[11px] text-app-muted leading-relaxed">Next: {entry.nextAction}</div>
+                                  ) : null}
+                                  {entry.waitLabel ? (
+                                    <div className="text-[11px] text-app-muted leading-relaxed">Wait: {entry.waitLabel}</div>
+                                  ) : null}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="rounded-2xl border border-white/5 bg-black/20 p-5 text-sm text-app-muted">
+                                No anchor timeline entries were recorded.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="glass-card p-6 border-white/5 space-y-4">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest opacity-30">
+                            <Orbit size={14} className="text-yellow-400" /> Tangent Queue
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {(log.sessionState?.tangentQueue || []).length > 0 ? (
+                              (log.sessionState?.tangentQueue || []).map((tangent) => (
+                                <div key={tangent.id} className="rounded-2xl border border-white/5 bg-black/20 p-4 space-y-2">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div className="text-sm font-semibold text-main">{tangent.title}</div>
+                                    <div className="text-[10px] font-black uppercase tracking-widest text-app-muted">{tangent.disposition || "later"}</div>
+                                  </div>
+                                  {tangent.reason ? (
+                                    <div className="text-xs text-app-muted leading-relaxed whitespace-pre-wrap">{tangent.reason}</div>
+                                  ) : null}
+                                  <div className="text-[11px] text-app-primary">Return: {tangent.returnAction}</div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="rounded-2xl border border-white/5 bg-black/20 p-5 text-sm text-app-muted">
+                                No tangents were captured in this anchor.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
+                          <div className="flex items-start gap-4">
+                            <Flag size={18} className="accent-text mt-1 shrink-0" />
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase opacity-30">
+                                NEXT STRATEGIC TASK
+                              </span>
+                              {editingId === log.id ? (
+                                <input
+                                  value={editFields.nextStep || ""}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      nextStep: e.target.value,
+                                    })
+                                  }
+                                  className="input-field py-2"
+                                />
+                              ) : (
+                                <p className="text-sm font-bold data-text underline decoration-accent-color decoration-2 underline-offset-4">
+                                  {log.nextStep || "None recorded."}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-4">
+                            <CornerDownLeft size={18} className="accent-text mt-1 shrink-0" />
+                            <div className="space-y-1">
+                              <span className="text-[10px] font-black uppercase opacity-30">
+                                NOTES SUMMARY
+                              </span>
+                              {editingId === log.id ? (
+                                <textarea
+                                  value={editFields.output || ""}
+                                  onChange={(e) =>
+                                    setEditFields({
+                                      ...editFields,
+                                      output: e.target.value,
+                                    })
+                                  }
+                                  className="input-field h-24 text-xs"
+                                />
+                              ) : (
+                                <p className="text-sm font-medium data-text opacity-70 whitespace-pre-wrap">
+                                  {log.output || "No notes summary recorded."}
+                                </p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : (

@@ -77,8 +77,16 @@ test('normalizeSettings clamps invalid nested values back to safe ranges/default
 test('normalizeSettings migrates legacy mode flags into sessionMode', () => {
   const pomodoroSettings = normalizeSettings({ pomodoroOnly: true }, defaults, ['enforcer', 'custom']);
   const latencySettings = normalizeSettings({ latencyBlocks: true }, defaults, ['enforcer', 'custom']);
+  const anchorSettings = normalizeSettings({ anchorMode: true }, defaults, ['enforcer', 'custom']);
 
   assert.equal(pomodoroSettings.sessionMode, 'pomodoro');
   assert.equal(latencySettings.sessionMode, 'latencyBlocks');
+  assert.equal(anchorSettings.sessionMode, 'anchor');
+});
+
+test('normalizeSettings preserves explicit anchor session mode', () => {
+  const anchorSettings = normalizeSettings({ sessionMode: 'anchor' }, defaults, ['enforcer', 'custom']);
+
+  assert.equal(anchorSettings.sessionMode, 'anchor');
 });
 

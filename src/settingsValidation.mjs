@@ -1,6 +1,6 @@
 const REMINDER_MODES = new Set(['stochastic', 'presets']);
 const OSC_TYPES = new Set(['sine', 'triangle', 'square', 'sawtooth']);
-const SESSION_MODES = new Set(['deepWork', 'pomodoro', 'latencyBlocks']);
+const SESSION_MODES = new Set(['deepWork', 'pomodoro', 'latencyBlocks', 'anchor']);
 
 const isPlainObject = (value) => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 const asBoolean = (value, fallback) => (typeof value === 'boolean' ? value : fallback);
@@ -46,6 +46,10 @@ const normalizeTheme = (theme, fallback) => {
 const normalizeSessionMode = (parsed, fallback) => {
   if (SESSION_MODES.has(parsed.sessionMode)) {
     return parsed.sessionMode;
+  }
+
+  if (parsed.anchorMode === true) {
+    return 'anchor';
   }
 
   if (parsed.latencyBlocks === true) {
